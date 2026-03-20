@@ -19,6 +19,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ listingId: string }> },
 ) {
+  try {
   const user = await getSessionUser()
 
   if (!user || !isAdminRole(user.role)) {
@@ -136,4 +137,8 @@ export async function POST(
     action,
     status: nextStatus,
   })
+  } catch (error) {
+    console.error("[AdminInventoryAction] Error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
 }
