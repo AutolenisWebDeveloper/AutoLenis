@@ -134,11 +134,12 @@ function checkDirectPrismaAccess(): CheckResult {
     const lines = readFileLines(file);
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
+      // Skip comment lines
+      if (line.trimStart().startsWith("//") || line.trimStart().startsWith("*")) continue;
+
       if (
         line.includes("new PrismaClient") ||
-        (line.includes("from") &&
-          line.includes("@prisma/client") &&
-          line.includes("PrismaClient"))
+        /^\s*import\s+.*PrismaClient.*from\s+['"]@prisma\/client['"]/.test(line)
       ) {
         violations.push({
           file: path.relative(process.cwd(), file),
@@ -210,10 +211,13 @@ function checkServiceRoleInUserRoutes(): CheckResult {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       // Check for getSupabase() which is the service-role client
+      // Skip comment lines (single-line //, block /* */, or doc /** */)
       if (
-        line.includes("getSupabase()") &&
+        /\bgetSupabase\(\)/.test(line) &&
         !line.trimStart().startsWith("//") &&
-        !line.trimStart().startsWith("*")
+        !line.trimStart().startsWith("*") &&
+        !line.trimStart().startsWith("/*") &&
+        !/['"`].*getSupabase\(\).*['"`]/.test(line) // skip string literals
       ) {
         violations.push({
           file: path.relative(process.cwd(), file),
@@ -284,7 +288,8 @@ function checkRouteErrorHandling(): CheckResult {
   for (const file of routeFiles) {
     const content = fs.readFileSync(file, "utf-8");
 
-    // Skip very short files (redirects, 410 stubs)
+    // Skip very short files — 410 stubs, redirects, and simple re-exports
+    // are typically under 200 chars and don't need error handling
     if (content.length < 200) continue;
 
     // Check for try/catch pattern

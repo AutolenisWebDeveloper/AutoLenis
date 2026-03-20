@@ -52,10 +52,10 @@ function main(): void {
   let lintOutput: string;
   try {
     lintOutput = execSync(
-      "pnpm eslint . --no-error-on-unmatched-pattern --format json 2>/dev/null",
+      "pnpm eslint . --no-error-on-unmatched-pattern --format json",
       {
         encoding: "utf-8",
-        maxBuffer: 50 * 1024 * 1024, // 50MB
+        maxBuffer: 20 * 1024 * 1024, // 20MB
         timeout: 300000, // 5 min
       }
     );
