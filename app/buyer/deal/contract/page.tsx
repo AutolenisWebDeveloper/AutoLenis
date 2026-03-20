@@ -1,19 +1,13 @@
-"use client"
+import { redirect } from "next/navigation"
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
-
+/**
+ * /buyer/deal/contract — Contract Shield step within the deal workflow.
+ *
+ * The full Contract Shield review UI lives at /buyer/contracts.
+ * This page performs a server-side redirect so users navigating through
+ * the deal sidebar land on the real contract review page without
+ * a client-side flash or spinner.
+ */
 export default function DealContractPage() {
-  const router = useRouter()
-
-  useEffect(() => {
-    // Redirect to the main contracts page
-    router.replace("/buyer/contracts")
-  }, [router])
-
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-    </div>
-  )
+  redirect("/buyer/contracts")
 }
