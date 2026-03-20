@@ -4,7 +4,7 @@ import { test, expect } from "@playwright/test"
  * Buyer Console Auto-Click Demo E2E Tests
  *
  * Verifies:
- * 1) "See Every Offer. Choose With Confidence." section renders on homepage
+ * 1) "Your Buyer Console — Every Offer, One Dashboard" section renders on homepage
  * 2) BuyerConsole component renders with dealer cards
  * 3) Manual clicking on dealer cards updates selection (real state change)
  * 4) Component does not throw runtime errors
