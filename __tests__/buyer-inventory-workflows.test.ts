@@ -51,6 +51,22 @@ describe("Buyer Inventory Workflows", () => {
       expect(res.status).toBe(401)
     })
 
+    it("returns 401 when user role is not BUYER", async () => {
+      mockGetSessionUser.mockResolvedValue({ userId: "admin-1", role: "ADMIN" })
+      const res = await claimPost(
+        makePostRequest("/api/buyer/inventory/claim", { listing_id: "l1" }),
+      )
+      expect(res.status).toBe(401)
+    })
+
+    it("returns 401 when user role is DEALER", async () => {
+      mockGetSessionUser.mockResolvedValue({ userId: "dealer-1", role: "DEALER" })
+      const res = await claimPost(
+        makePostRequest("/api/buyer/inventory/claim", { listing_id: "l1" }),
+      )
+      expect(res.status).toBe(401)
+    })
+
     it("returns 400 when listing_id is missing", async () => {
       mockGetSessionUser.mockResolvedValue({ userId: "buyer-1", role: "BUYER" })
       const res = await claimPost(
@@ -113,6 +129,22 @@ describe("Buyer Inventory Workflows", () => {
   describe("POST /api/buyer/inventory/source", () => {
     it("returns 401 when not authenticated", async () => {
       mockGetSessionUser.mockResolvedValue(null)
+      const res = await sourcePost(
+        makePostRequest("/api/buyer/inventory/source", { make: "Toyota" }),
+      )
+      expect(res.status).toBe(401)
+    })
+
+    it("returns 401 when user role is not BUYER", async () => {
+      mockGetSessionUser.mockResolvedValue({ userId: "admin-1", role: "ADMIN" })
+      const res = await sourcePost(
+        makePostRequest("/api/buyer/inventory/source", { make: "Toyota" }),
+      )
+      expect(res.status).toBe(401)
+    })
+
+    it("returns 401 when user role is DEALER", async () => {
+      mockGetSessionUser.mockResolvedValue({ userId: "dealer-1", role: "DEALER" })
       const res = await sourcePost(
         makePostRequest("/api/buyer/inventory/source", { make: "Toyota" }),
       )

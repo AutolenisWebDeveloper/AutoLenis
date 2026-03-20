@@ -206,6 +206,20 @@ describe("GET /api/admin/inventory/search", () => {
     expect(orCall!.args[0]).toContain("vin.ilike.%Camry%")
   })
 
+  it("sanitizes special characters in search query to prevent filter injection", async () => {
+    mockGetSessionUser.mockResolvedValue({ userId: "admin1", role: "ADMIN" })
+    mockIsAdminRole.mockReturnValue(true)
+    queryResult = { data: [], error: null, count: 0 }
+
+    await GET(makeRequest({ q: "test,vin.eq.123" }))
+
+    const orCall = capturedCalls.find((c) => c.method === "or")
+    expect(orCall).toBeDefined()
+    // Commas and dots should be escaped to prevent PostgREST filter injection
+    expect(orCall!.args[0]).not.toContain("test,vin.eq.123")
+    expect(orCall!.args[0]).toContain("test\\,vin\\.eq\\.123")
+  })
+
   // ── Pagination ────────────────────────────────────────────────────
 
   it("respects limit and offset params", async () => {
