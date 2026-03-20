@@ -11,6 +11,14 @@ import {
 
 export const dynamic = "force-dynamic"
 
+function safeErrorMessage(error: unknown): string {
+  const msg =
+    (error && typeof error === "object" && "message" in error
+      ? (error as any).message
+      : String(error ?? "Unknown error")) ?? ""
+  return String(msg).replace(/[\r\n]+/g, " ")
+}
+
 export async function GET(_request: NextRequest) {
   try {
     const session = await getSession()
@@ -65,7 +73,7 @@ export async function GET(_request: NextRequest) {
       },
     })
   } catch (error: any) {
-    console.error("[System Health API] Error:", error?.message)
+    console.error("[System Health API] Error:", safeErrorMessage(error))
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -99,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: check })
   } catch (error: any) {
-    console.error("[System Health API] Error:", error?.message)
+    console.error("[System Health API] Error:", safeErrorMessage(error))
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
