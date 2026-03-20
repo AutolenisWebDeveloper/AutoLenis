@@ -2,6 +2,7 @@ import NextAuth, { type NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { createClient } from "@/lib/supabase/server"
 import bcrypt from "bcryptjs"
+import { NextResponse } from "next/server"
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -75,4 +76,20 @@ export const authOptions: NextAuthOptions = {
 
 const handler = NextAuth(authOptions)
 
-export { handler as GET, handler as POST }
+export async function GET(...args: Parameters<typeof handler>) {
+  try {
+    return await handler(...args)
+  } catch (error) {
+    console.error("[NextAuth GET] Error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+export async function POST(...args: Parameters<typeof handler>) {
+  try {
+    return await handler(...args)
+  } catch (error) {
+    console.error("[NextAuth POST] Error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}

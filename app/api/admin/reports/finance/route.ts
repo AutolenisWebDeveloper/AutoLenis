@@ -5,6 +5,7 @@ import { mockSelectors } from "@/lib/mocks/mockStore"
 import { createClient } from "@/lib/supabase/server"
 
 export async function GET(request: Request) {
+  try {
   const user = await getSessionUser()
   if (!user || !isAdminRole(user.role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -137,4 +138,8 @@ export async function GET(request: Request) {
       ledger: ledgerEntries,
     },
   })
+  } catch (error) {
+    console.error("[AdminFinanceReport] Error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
 }
