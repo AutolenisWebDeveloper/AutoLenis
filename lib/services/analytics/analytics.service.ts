@@ -48,11 +48,6 @@ export async function getExecutiveDashboard() {
 // Inventory source breakdown — groups canonical listings by source × status
 // ---------------------------------------------------------------------------
 
-interface SourceBreakdownRow {
-  source: string
-  status: string
-}
-
 interface SourceBreakdownEntry {
   source: string
   total: number
@@ -75,7 +70,7 @@ export async function getInventorySourceBreakdown(): Promise<
 
   const grouped = new Map<string, Record<string, number>>()
 
-  for (const row of (data ?? []) as SourceBreakdownRow[]) {
+  for (const row of (data ?? []) as Array<{ source: string; status: string }>) {
     const src = row.source ?? "UNKNOWN"
     const st = row.status ?? "UNKNOWN"
 

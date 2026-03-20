@@ -1,9 +1,18 @@
 -- Phase 11: Analytics, KPIs, Source Intelligence, Marketplace Reporting
--- Rollback: DROP TABLE IF EXISTS analytics_daily_snapshots CASCADE;
---           DROP VIEW IF EXISTS analytics_inventory_overview, analytics_lead_funnel,
---             analytics_sourcing_case_funnel, analytics_invite_performance,
---             analytics_offer_performance, analytics_conversion_performance,
---             analytics_ops_risk_overview CASCADE;
+--
+-- Rollback:
+--   DROP VIEW IF EXISTS analytics_inventory_overview CASCADE;
+--   DROP VIEW IF EXISTS analytics_lead_funnel CASCADE;
+--   DROP VIEW IF EXISTS analytics_sourcing_case_funnel CASCADE;
+--   DROP VIEW IF EXISTS analytics_invite_performance CASCADE;
+--   DROP VIEW IF EXISTS analytics_offer_performance CASCADE;
+--   DROP VIEW IF EXISTS analytics_conversion_performance CASCADE;
+--   DROP VIEW IF EXISTS analytics_ops_risk_overview CASCADE;
+--   DROP TABLE IF EXISTS analytics_daily_snapshots CASCADE;
+--
+-- Dependencies: analytics service (lib/services/analytics/) and admin API
+--   route (app/api/admin/analytics/dashboard/) read from these views/table.
+--   Remove or update those references before executing rollback.
 
 -- ---------------------------------------------------------------------------
 -- 1. Daily KPI snapshot table (durable history)
