@@ -160,7 +160,15 @@ async function fetchActiveConversions(): Promise<EvaluableEntity[]> {
     const { data, error } = await supabase
       .from("inventory_case_conversions")
       .select("id, created_at, status, updated_at")
-      .in("status", ["INITIATED", "IN_PROGRESS"])
+      .in("status", [
+        "PENDING",
+        "BUYER_RESOLVED",
+        "DEAL_CREATED",
+        "CONTRACTS_SEEDED",
+        "PAYMENTS_SEEDED",
+        "INSURANCE_SEEDED",
+        "PICKUP_SEEDED",
+      ])
       .order("created_at", { ascending: true })
       .limit(500)
 
