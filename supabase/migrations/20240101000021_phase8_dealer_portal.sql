@@ -1,12 +1,17 @@
 -- Phase 8: Dealer Portal Participation Tables
 -- Enables two-sided marketplace: dealer inbox, invite lifecycle, offer submission,
 -- and external-to-onboarded dealer migration.
+--
+-- NOTE: These tables are intentionally named dealer_portal_* to avoid conflicts
+-- with the identically-named but structurally different sourcing_case_invites/offers
+-- tables created by the Phase 6 migration (which serves the buyer-package sourcing
+-- flow). Phase 6 tables reference sourcing_cases; these reference VehicleRequestCase.
 
 -- ---------------------------------------------------------------------------
--- sourcing_case_invites — case-level invites sent to onboarded dealers
+-- dealer_portal_invites — case-level invites sent to onboarded dealers
 -- ---------------------------------------------------------------------------
 -- Lifecycle: PENDING → SENT → VIEWED → RESPONDED / DECLINED / EXPIRED
-create table if not exists sourcing_case_invites (
+create table if not exists dealer_portal_invites (
   id          uuid primary key default gen_random_uuid(),
   case_id     text not null references "VehicleRequestCase"(id) on delete cascade,
   dealer_id   text not null references "Dealer"(id) on delete cascade,
@@ -20,21 +25,21 @@ create table if not exists sourcing_case_invites (
   updated_at  timestamptz not null default now()
 );
 
-create index if not exists idx_sci_dealer on sourcing_case_invites(dealer_id);
-create index if not exists idx_sci_case   on sourcing_case_invites(case_id);
-create index if not exists idx_sci_status on sourcing_case_invites(status);
+create index if not exists idx_dpi_dealer on dealer_portal_invites(dealer_id);
+create index if not exists idx_dpi_case   on dealer_portal_invites(case_id);
+create index if not exists idx_dpi_status on dealer_portal_invites(status);
 
 -- Prevent duplicate invites for the same case + dealer pair.
-create unique index if not exists idx_sci_case_dealer
-  on sourcing_case_invites(case_id, dealer_id);
+create unique index if not exists idx_dpi_case_dealer
+  on dealer_portal_invites(case_id, dealer_id);
 
 -- ---------------------------------------------------------------------------
--- sourcing_case_offers — dealer-submitted offers through the portal
+-- dealer_portal_offers — dealer-submitted offers through the portal
 -- ---------------------------------------------------------------------------
 -- Lifecycle: SUBMITTED → UNDER_REVIEW → SHORTLISTED → SELECTED / REJECTED / WITHDRAWN
-create table if not exists sourcing_case_offers (
+create table if not exists dealer_portal_offers (
   id            uuid primary key default gen_random_uuid(),
-  invite_id     uuid not null references sourcing_case_invites(id) on delete cascade,
+  invite_id     uuid not null references dealer_portal_invites(id) on delete cascade,
   case_id       text not null references "VehicleRequestCase"(id) on delete cascade,
   dealer_id     text not null references "Dealer"(id) on delete cascade,
   listing_url   text,
@@ -53,15 +58,17 @@ create table if not exists sourcing_case_offers (
   updated_at    timestamptz not null default now()
 );
 
-create index if not exists idx_sco_invite  on sourcing_case_offers(invite_id);
-create index if not exists idx_sco_case    on sourcing_case_offers(case_id);
-create index if not exists idx_sco_dealer  on sourcing_case_offers(dealer_id);
-create index if not exists idx_sco_status  on sourcing_case_offers(status);
+create index if not exists idx_dpo_invite  on dealer_portal_offers(invite_id);
+create index if not exists idx_dpo_case    on dealer_portal_offers(case_id);
+create index if not exists idx_dpo_dealer  on dealer_portal_offers(dealer_id);
+create index if not exists idx_dpo_status  on dealer_portal_offers(status);
 
 -- ---------------------------------------------------------------------------
--- external_dealer_matches — map scraped external dealers → onboarded dealers
+-- dealer_portal_external_matches — map scraped external dealers → onboarded dealers
 -- ---------------------------------------------------------------------------
-create table if not exists external_dealer_matches (
+-- NOTE: This is separate from external_dealer_matches (Phase 5) which maps by
+-- inventory_dealers_external UUID. This table maps by dealer name + source strings.
+create table if not exists dealer_portal_external_matches (
   id                    uuid primary key default gen_random_uuid(),
   external_dealer_name  text not null,
   external_dealer_source text not null,
@@ -73,9 +80,9 @@ create table if not exists external_dealer_matches (
   created_at            timestamptz not null default now()
 );
 
-create index if not exists idx_edm_dealer on external_dealer_matches(dealer_id);
-create index if not exists idx_edm_name   on external_dealer_matches(external_dealer_name);
+create index if not exists idx_dpem_dealer on dealer_portal_external_matches(dealer_id);
+create index if not exists idx_dpem_name   on dealer_portal_external_matches(external_dealer_name);
 
 -- Prevent duplicate matches for the same external name + source + dealer.
-create unique index if not exists idx_edm_unique
-  on external_dealer_matches(external_dealer_name, external_dealer_source, dealer_id);
+create unique index if not exists idx_dpem_unique
+  on dealer_portal_external_matches(external_dealer_name, external_dealer_source, dealer_id);

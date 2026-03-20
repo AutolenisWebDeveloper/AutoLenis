@@ -63,7 +63,7 @@ export class DealerPortalService {
     const supabase = getSupabase()
 
     const { data, error } = await supabase
-      .from("sourcing_case_invites")
+      .from("dealer_portal_invites")
       .select(`
         *,
         VehicleRequestCase (
@@ -94,7 +94,7 @@ export class DealerPortalService {
     const supabase = getSupabase()
 
     const { data, error } = await supabase
-      .from("sourcing_case_invites")
+      .from("dealer_portal_invites")
       .select("*")
       .eq("id", inviteId)
       .eq("dealer_id", dealerId)
@@ -150,7 +150,7 @@ export class DealerPortalService {
     }
 
     const { data, error } = await supabase
-      .from("sourcing_case_invites")
+      .from("dealer_portal_invites")
       .update(patch)
       .eq("id", inviteId)
       .eq("dealer_id", dealerId)
@@ -205,7 +205,7 @@ export class DealerPortalService {
     const supabase = getSupabase()
 
     const { data, error } = await supabase
-      .from("sourcing_case_offers")
+      .from("dealer_portal_offers")
       .insert({
         invite_id: inviteId,
         case_id: invite.case_id,
@@ -232,7 +232,7 @@ export class DealerPortalService {
     // Ensure the invite is in RESPONDED state once an offer is submitted
     if (invite.status === InviteStatus.VIEWED) {
       const { error: transitionError } = await supabase
-        .from("sourcing_case_invites")
+        .from("dealer_portal_invites")
         .update({
           status: InviteStatus.RESPONDED,
           responded_at: new Date().toISOString(),
@@ -258,7 +258,7 @@ export class DealerPortalService {
     const supabase = getSupabase()
 
     const { data, error } = await supabase
-      .from("sourcing_case_offers")
+      .from("dealer_portal_offers")
       .select("*")
       .eq("invite_id", inviteId)
       .eq("dealer_id", dealerId)
@@ -288,7 +288,7 @@ export class DealerPortalService {
     const supabase = getSupabase()
 
     const { data, error } = await supabase
-      .from("external_dealer_matches")
+      .from("dealer_portal_external_matches")
       .upsert(
         {
           external_dealer_name: input.externalDealerName,
@@ -317,7 +317,7 @@ export class DealerPortalService {
     const supabase = getSupabase()
 
     const { data, error } = await supabase
-      .from("external_dealer_matches")
+      .from("dealer_portal_external_matches")
       .select("*")
       .eq("dealer_id", dealerId)
       .order("matched_at", { ascending: false })
@@ -335,7 +335,7 @@ export class DealerPortalService {
     const supabase = getSupabase()
 
     const { data, error } = await supabase
-      .from("external_dealer_matches")
+      .from("dealer_portal_external_matches")
       .select("*")
       .eq("external_dealer_name", externalDealerName)
       .eq("external_dealer_source", externalDealerSource)
