@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { verifySessionEdge } from "@/lib/auth-edge"
 import { validateCsrf, ensureCsrfCookie } from "@/lib/middleware/csrf"
+import { updateSession } from "@/utils/supabase/middleware"
 
 export async function proxy(request: NextRequest) {
   // CSRF validation for state-changing requests using cookie auth
@@ -11,6 +12,28 @@ export async function proxy(request: NextRequest) {
       { error: { code: "CSRF_INVALID", message: csrfError } },
       { status: 403 }
     )
+  }
+
+  // Refresh Supabase auth session cookies so Server Components always have
+  // a fresh session. Skipped when Supabase is not configured (e.g., test env).
+  // Errors are non-fatal — the proxy continues even if the refresh fails.
+  const supabaseConfigured =
+    !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    !!(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY)
+  const supabaseSessionResponse = supabaseConfigured
+    ? await updateSession(request).catch((err: unknown) => {
+        console.error("[proxy] Supabase session refresh failed", err)
+        return null
+      })
+    : null
+
+  // Forward any refreshed Supabase cookies onto an outgoing page response.
+  // Not applied to API responses or redirects — those don't need session cookies.
+  const withSupabaseCookies = (res: NextResponse): NextResponse => {
+    supabaseSessionResponse?.cookies.getAll().forEach((cookie) => {
+      res.cookies.set(cookie.name, cookie.value, cookie)
+    })
+    return res
   }
 
   const ref = request.nextUrl.searchParams.get("ref")
@@ -28,7 +51,7 @@ export async function proxy(request: NextRequest) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code: ref }),
     }).catch(() => {})
-    return response
+    return withSupabaseCookies(response)
   }
 
   let { pathname } = request.nextUrl
@@ -102,13 +125,17 @@ export async function proxy(request: NextRequest) {
     if (shouldRewriteAdmin) {
       const adminUrl = new URL(rewrittenPath, request.url)
       adminUrl.search = request.nextUrl.search
-      return ensureCsrfCookie(
-        request,
-        NextResponse.rewrite(adminUrl, { request: { headers: requestHeaders } })
+      return withSupabaseCookies(
+        ensureCsrfCookie(
+          request,
+          NextResponse.rewrite(adminUrl, { request: { headers: requestHeaders } })
+        )
       )
     }
 
-    return ensureCsrfCookie(request, NextResponse.next({ request: { headers: requestHeaders } }))
+    return withSupabaseCookies(
+      ensureCsrfCookie(request, NextResponse.next({ request: { headers: requestHeaders } }))
+    )
   }
 
   // Gateway-level session check for sensitive API prefixes — defense in depth
@@ -180,16 +207,16 @@ export async function proxy(request: NextRequest) {
       if (mockRole) {
         const response = NextResponse.next({ request: { headers: requestHeaders } })
         response.cookies.set("mock_role", mockRole, { path: "/", sameSite: "strict", httpOnly: true, secure: process.env['NODE_ENV'] === "production" })
-        return response
+        return withSupabaseCookies(response)
       }
-      return NextResponse.next({ request: { headers: requestHeaders } })
+      return withSupabaseCookies(NextResponse.next({ request: { headers: requestHeaders } }))
     }
 
     const hasMockRole = request.cookies.get("mock_role")?.value
     if (hasMockRole) {
       const response = NextResponse.next({ request: { headers: requestHeaders } })
       response.cookies.delete("mock_role")
-      return response
+      return withSupabaseCookies(response)
     }
 
     if (pathname.startsWith("/buyer") && session.role !== "BUYER") {
@@ -220,13 +247,17 @@ export async function proxy(request: NextRequest) {
     if (shouldRewriteAdmin) {
       const adminUrl = new URL(rewrittenPath, request.url)
       adminUrl.search = request.nextUrl.search
-      return ensureCsrfCookie(
-        request,
-        NextResponse.rewrite(adminUrl, { request: { headers: requestHeaders } })
+      return withSupabaseCookies(
+        ensureCsrfCookie(
+          request,
+          NextResponse.rewrite(adminUrl, { request: { headers: requestHeaders } })
+        )
       )
     }
 
-    return ensureCsrfCookie(request, NextResponse.next({ request: { headers: requestHeaders } }))
+    return withSupabaseCookies(
+      ensureCsrfCookie(request, NextResponse.next({ request: { headers: requestHeaders } }))
+    )
   } catch {
     if (pathname.startsWith("/admin")) {
       const signInUrl = shouldRewriteAdmin
