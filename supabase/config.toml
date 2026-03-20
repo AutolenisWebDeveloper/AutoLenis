@@ -6,7 +6,9 @@
 #
 # Documentation: https://supabase.com/docs/guides/cli/config
 
-project_id = "env(SUPABASE_PROJECT_ID)"
+# Non-secret: this is the public Supabase project reference ID, visible in every
+# API URL (https://vpwnjibcrqujclqalkgy.supabase.co). Safe to commit to VCS.
+project_id = "vpwnjibcrqujclqalkgy"
 
 [api]
 enabled = true
