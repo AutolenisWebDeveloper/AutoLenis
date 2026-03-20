@@ -32,16 +32,16 @@ export default [
 
       // ── STAGED (warn) — promote to error after cleanup ─────────────
 
-      // No explicit `any` — ~857 existing violations
+      // No explicit `any` — ~1192 existing violations repo-wide
       "@typescript-eslint/no-explicit-any": "warn",
 
-      // No floating promises — ~164 existing violations
+      // No floating promises — ~165 existing violations repo-wide
       "@typescript-eslint/no-floating-promises": ["warn", {
         ignoreVoid: true,        // allow `void fn()` as explicit discard
         ignoreIIFE: false,
       }],
 
-      // No misused promises — ~8 existing violations
+      // No misused promises — ~9 existing violations
       "@typescript-eslint/no-misused-promises": ["warn", {
         checksVoidReturn: {
           attributes: false,     // allow promise in JSX event handlers
@@ -57,6 +57,41 @@ export default [
       "@typescript-eslint/no-unsafe-call": "warn",
       "@typescript-eslint/no-unsafe-return": "warn",
       "@typescript-eslint/no-unsafe-argument": "warn",
+    },
+  },
+
+  // ── PROMOTED: no-floating-promises → error in API routes + lib ─────
+  //
+  // API routes and library code MUST NOT have floating promises.
+  // These are server-side — unhandled promise rejections crash the process.
+  //
+  {
+    files: [
+      "app/api/**/*.ts",
+      "lib/**/*.ts",
+      "scripts/governance/**/*.ts",
+    ],
+    rules: {
+      "@typescript-eslint/no-floating-promises": ["error", {
+        ignoreVoid: true,
+        ignoreIIFE: false,
+      }],
+    },
+  },
+
+  // ── PROMOTED: no-explicit-any → error in governance scripts ────────
+  //
+  // Governance scripts enforce standards — they must not use `any`.
+  //
+  {
+    files: ["scripts/governance/**/*.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-unsafe-assignment": "error",
+      "@typescript-eslint/no-unsafe-member-access": "error",
+      "@typescript-eslint/no-unsafe-call": "error",
+      "@typescript-eslint/no-unsafe-return": "error",
+      "@typescript-eslint/no-unsafe-argument": "error",
     },
   },
 
@@ -95,7 +130,10 @@ export default [
     ignores: [
       ".next/**",
       "node_modules/**",
-      "scripts/**",
+      "scripts/!(governance)/**",
+      "scripts/*.ts",
+      "scripts/*.js",
+      "scripts/*.mjs",
       "__tests__/**",
       "e2e/**",
       "migrations/**",
