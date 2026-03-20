@@ -480,14 +480,79 @@ export async function validateConfig(): Promise<ConfigValidationResult[]> {
 }
 
 // ---------------------------------------------------------------------------
+// Database Row Types (snake_case from Supabase)
+// ---------------------------------------------------------------------------
+
+interface HealthCheckRow {
+  id: string
+  check_key: string
+  status: string
+  message: string | null
+  payload: Record<string, unknown> | null
+  checked_at: string
+  created_at: string
+}
+
+interface JobRunRow {
+  id: string
+  job_key: string
+  run_type: string
+  status: string
+  started_at: string
+  finished_at: string | null
+  duration_ms: number | null
+  payload: Record<string, unknown> | null
+  error_message: string | null
+  created_at: string
+}
+
+interface IncidentRow {
+  id: string
+  incident_key: string
+  severity: string
+  status: string
+  title: string
+  description: string | null
+  payload: Record<string, unknown> | null
+  opened_at: string
+  acknowledged_at: string | null
+  resolved_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+interface RateLimitRow {
+  id: string
+  limit_key: string
+  is_active: boolean
+  max_per_hour: number | null
+  max_per_day: number | null
+  max_concurrent: number | null
+  payload: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
+interface ConfigEntryRow {
+  id: string
+  config_key: string
+  environment: string
+  is_required: boolean
+  category: string
+  description: string | null
+  created_at: string
+  updated_at: string
+}
+
+// ---------------------------------------------------------------------------
 // Row Mappers (snake_case DB → camelCase TS)
 // ---------------------------------------------------------------------------
 
-function mapHealthCheck(row: any): SystemHealthCheck {
+function mapHealthCheck(row: HealthCheckRow): SystemHealthCheck {
   return {
     id: row.id,
     checkKey: row.check_key,
-    status: row.status,
+    status: row.status as SystemHealthCheck["status"],
     message: row.message,
     payload: row.payload ?? {},
     checkedAt: row.checked_at,
@@ -495,12 +560,12 @@ function mapHealthCheck(row: any): SystemHealthCheck {
   }
 }
 
-function mapJobRun(row: any): SystemJobRun {
+function mapJobRun(row: JobRunRow): SystemJobRun {
   return {
     id: row.id,
     jobKey: row.job_key,
-    runType: row.run_type,
-    status: row.status,
+    runType: row.run_type as SystemJobRun["runType"],
+    status: row.status as SystemJobRun["status"],
     startedAt: row.started_at,
     finishedAt: row.finished_at,
     durationMs: row.duration_ms,
@@ -510,12 +575,12 @@ function mapJobRun(row: any): SystemJobRun {
   }
 }
 
-function mapIncident(row: any): SystemIncident {
+function mapIncident(row: IncidentRow): SystemIncident {
   return {
     id: row.id,
     incidentKey: row.incident_key,
-    severity: row.severity,
-    status: row.status,
+    severity: row.severity as SystemIncident["severity"],
+    status: row.status as SystemIncident["status"],
     title: row.title,
     description: row.description,
     payload: row.payload ?? {},
@@ -527,7 +592,7 @@ function mapIncident(row: any): SystemIncident {
   }
 }
 
-function mapRateLimit(row: any): SystemRateLimit {
+function mapRateLimit(row: RateLimitRow): SystemRateLimit {
   return {
     id: row.id,
     limitKey: row.limit_key,
@@ -541,7 +606,7 @@ function mapRateLimit(row: any): SystemRateLimit {
   }
 }
 
-function mapConfigEntry(row: any): SystemConfigEntry {
+function mapConfigEntry(row: ConfigEntryRow): SystemConfigEntry {
   return {
     id: row.id,
     configKey: row.config_key,
