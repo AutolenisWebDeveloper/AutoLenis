@@ -25,20 +25,9 @@ export async function OPTIONS() {
 export async function POST(request: Request) {
   logger.info("SignUp request received")
 
-  if (!process.env['NEXT_PUBLIC_SUPABASE_URL'] || !process.env['SUPABASE_SERVICE_ROLE_KEY']) {
-    logger.error("Missing required environment variables for signup")
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Server configuration error. Please contact support.",
-      },
-      { status: 503 },
-    )
-  }
-
-  // ── Parse & validate BEFORE rate limiting ──────────────────────────────
-  // Invalid requests get an immediate 400 without consuming rate-limit
-  // budget.  Only structurally valid requests count towards the limit.
+  // ── Parse & validate BEFORE env-var check and rate limiting ─────────────
+  // This ensures schema validation errors always return 400, even in CI
+  // environments where Supabase is not configured.
   let body
   try {
     body = await request.json()
@@ -74,6 +63,17 @@ export async function POST(request: Request) {
     )
   }
   const validated = parseResult.data
+
+  if (!process.env['NEXT_PUBLIC_SUPABASE_URL'] || !process.env['SUPABASE_SERVICE_ROLE_KEY']) {
+    logger.error("Missing required environment variables for signup")
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Server configuration error. Please contact support.",
+      },
+      { status: 503 },
+    )
+  }
 
   // ── Rate-limit only valid-looking requests ─────────────────────────────
   try {

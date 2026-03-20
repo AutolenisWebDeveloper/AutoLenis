@@ -42,7 +42,7 @@ export async function validateCronRequest(request: NextRequest): Promise<NextRes
 
   if (!cronSecret) {
     console.error("[CronSecurity] CRON_SECRET not configured")
-    return NextResponse.json({ error: "Service not configured" }, { status: 503 })
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   const expected = `Bearer ${cronSecret}`

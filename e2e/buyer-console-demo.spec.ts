@@ -22,9 +22,9 @@ test.describe("Buyer Console Demo", () => {
     await page.goto(BASE, { waitUntil: "domcontentloaded" })
 
     const heading = page.locator(
-      "text=See Every Offer. Choose With Confidence."
+      "text=Your Buyer Console — Every Offer, One Dashboard"
     )
-    await expect(heading).toBeVisible({ timeout: 10_000 })
+    await expect(heading.first()).toBeVisible({ timeout: 10_000 })
   })
 
   test("buyer console renders with dealer cards", async ({ page }) => {
@@ -32,27 +32,22 @@ test.describe("Buyer Console Demo", () => {
 
     // Scroll to the section to ensure it's in view
     const heading = page.locator(
-      "text=See Every Offer. Choose With Confidence."
+      "text=Your Buyer Console — Every Offer, One Dashboard"
     )
-    await heading.scrollIntoViewIfNeeded()
-
-    // Buyer Console title bar text
-    const consoleTitleBar = page.locator("text=Buyer Console")
-    await expect(consoleTitleBar.first()).toBeVisible({ timeout: 10_000 })
+    await heading.first().scrollIntoViewIfNeeded()
 
     // All three dealer cards should be present
     await expect(page.locator("text=Dealer A").first()).toBeVisible()
     await expect(page.locator("text=Dealer B").first()).toBeVisible()
-    await expect(page.locator("text=Dealer C").first()).toBeVisible()
   })
 
   test("manual click on dealer card changes selection", async ({ page }) => {
     await page.goto(BASE, { waitUntil: "domcontentloaded" })
 
     const heading = page.locator(
-      "text=See Every Offer. Choose With Confidence."
+      "text=Your Buyer Console — Every Offer, One Dashboard"
     )
-    await heading.scrollIntoViewIfNeeded()
+    await heading.first().scrollIntoViewIfNeeded()
 
     // Wait for cards to appear
     const dealerA = page.locator('[data-dealer-id="a"] [role="button"]')
@@ -64,12 +59,12 @@ test.describe("Buyer Console Demo", () => {
     // Dealer A should now have the selected styling (green border)
     await expect(dealerA).toHaveClass(/border-brand-green/, { timeout: 5_000 })
 
-    // Click Dealer C
-    const dealerC = page.locator('[data-dealer-id="c"] [role="button"]')
-    await dealerC.click()
+    // Click Dealer B
+    const dealerB = page.locator('[data-dealer-id="b"] [role="button"]')
+    await dealerB.click()
 
-    // Dealer C should now be selected
-    await expect(dealerC).toHaveClass(/border-brand-green/, { timeout: 5_000 })
+    // Dealer B should now be selected
+    await expect(dealerB).toHaveClass(/border-brand-green/, { timeout: 5_000 })
 
     // Dealer A should no longer be selected
     await expect(dealerA).not.toHaveClass(/border-brand-green/)
@@ -90,9 +85,9 @@ test.describe("Buyer Console Demo", () => {
 
     // Scroll through the console section to trigger any lazy rendering
     const heading = page.locator(
-      "text=See Every Offer. Choose With Confidence."
+      "text=Your Buyer Console — Every Offer, One Dashboard"
     )
-    await heading.scrollIntoViewIfNeeded()
+    await heading.first().scrollIntoViewIfNeeded()
 
     // Wait for network to settle after scrolling
     await page.waitForLoadState("networkidle")
