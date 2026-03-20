@@ -2,52 +2,63 @@
 
 This guide provides step-by-step instructions to verify that your application is correctly connected to your Supabase project.
 
-## 1. Environment Variables Verification
+## 1. Environment Variables
 
 ### Required Variables
 
-Your application requires the following environment variables:
+Copy `.env.example` to `.env.local` and fill in these Supabase values:
 
-- `NEXT_PUBLIC_SUPABASE_URL` - Your Supabase project URL (e.g., `https://abc123xyz.supabase.co`)
-- `SUPABASE_SERVICE_ROLE_KEY` - Your Supabase service role key (server-side only, never exposed to client)
+```bash
+cp .env.example .env.local
+```
 
-### Verification Method
+| Variable | Where to Find | Required |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase Dashboard → Settings → API → Project URL | ✅ Yes |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Dashboard → Settings → API → Project API Keys → anon/public | ✅ Yes (or publishable key) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase Dashboard → Settings → API → Project API Keys → service_role | ✅ Yes |
+| `SUPABASE_PROJECT_ID` | Supabase Dashboard → Settings → General → Reference ID | ✅ Yes (for CLI) |
+| `SUPABASE_URL` | Same value as `NEXT_PUBLIC_SUPABASE_URL` | Optional override |
 
-The health check endpoint at `/api/health/db` will verify these variables without exposing secrets:
-
-- ✅ If both variables are present and valid, the endpoint returns project information
-- ❌ If variables are missing, returns HTTP 500 with error message
-- The `projectRef` in the response confirms which project you're connected to
-
-**IMPORTANT**: The service role key is NEVER logged or returned in responses.
+**IMPORTANT**: `SUPABASE_SERVICE_ROLE_KEY` is used server-side only and is **never** logged or returned in API responses.
 
 ## 2. Database Setup
 
-### Create the Canary Table
+### Apply Migrations via Supabase CLI
 
-Run this SQL in your Supabase SQL Editor to create the health check table:
+The recommended way to apply migrations is via the Supabase CLI (already installed as a dev dependency):
+
+```bash
+# Link your project (run once per environment)
+pnpm supabase:link
+
+# Push all migrations to your remote project
+pnpm supabase:db:push
+```
+
+This will apply `supabase/migrations/20240101000024_connection_canary.sql` which creates the `_connection_canary` health check table.
+
+### Manual SQL (Supabase SQL Editor)
+
+If you prefer to run manually, execute this in Supabase Dashboard → SQL Editor:
 
 ```sql
--- Create the connection canary table
+-- Create the connection canary table (idempotent)
 CREATE TABLE IF NOT EXISTS public._connection_canary (
-  id BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  message TEXT
+  id        BIGSERIAL PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  message   TEXT
 );
 
 -- Insert initial test row
-INSERT INTO public._connection_canary (message) 
-VALUES ('canary alive')
-ON CONFLICT DO NOTHING;
+INSERT INTO public._connection_canary (message)
+SELECT 'canary alive'
+WHERE NOT EXISTS (SELECT 1 FROM public._connection_canary);
 
--- Grant SELECT permission to service_role (for health checks)
+-- Grant SELECT permission to service_role only
 GRANT SELECT ON public._connection_canary TO service_role;
-```
-
-Alternatively, run the migration file:
-```bash
-# In Supabase SQL Editor, run:
-migrations/95-add-connection-canary-table.sql
+REVOKE ALL ON public._connection_canary FROM anon;
+REVOKE ALL ON public._connection_canary FROM authenticated;
 ```
 
 ## 3. Health Check Endpoint
@@ -56,203 +67,159 @@ migrations/95-add-connection-canary-table.sql
 
 - **URL**: `/api/health/db`
 - **Method**: GET
-- **Authentication**: None required (public endpoint)
-- **Purpose**: Verify Supabase connectivity and identify connected project
+- **Authentication**: Admin role (`ADMIN`, `SUPER_ADMIN`, `COMPLIANCE_ADMIN`) **or** `x-internal-key` header matching `INTERNAL_API_KEY`
+- **Purpose**: Verify Supabase connectivity and confirm the canary table exists
+
+> **Security note**: This endpoint is restricted to authenticated admins and internal callers to prevent leaking connectivity details to unauthenticated users.
 
 ### Response Schema
 
 ```typescript
 {
-  ok: boolean              // true if query succeeded
-  projectRef?: string      // Supabase project identifier (subdomain)
-  latencyMs: number        // Query execution time in milliseconds
-  lastCanaryRow?: object   // Last row from _connection_canary table (if any)
-  error?: string           // Error message (if any)
+  ok: boolean          // true if canary query succeeded
+  latencyMs: number    // Query round-trip time in milliseconds
+  correlationId: string // UUID for request tracing
+  timestamp: string    // ISO-8601 timestamp
+  error?: string       // Human-readable error (on failure only)
 }
 ```
 
 ### HTTP Status Codes
 
-- **200 OK** - Query succeeded (even if table is empty)
-- **503 Service Unavailable** - Table missing or database unreachable
-- **500 Internal Server Error** - Environment variables missing/misconfigured
+| Status | Meaning |
+|---|---|
+| `200 OK` | Database reachable, canary table exists |
+| `401 Unauthorized` | No valid admin session or internal key |
+| `503 Service Unavailable` | Canary table missing or database unreachable |
+| `503 Service Unavailable` | Environment variables missing |
+| `500 Internal Server Error` | Unexpected server error |
 
 ## 4. Testing Commands
 
-### Local Testing
+### Authenticated Admin Test (Local)
 
 ```bash
-# Basic test
-curl -X GET http://localhost:3000/api/health/db
+# Using internal API key (set INTERNAL_API_KEY in .env.local first)
+curl -X GET http://localhost:3000/api/health/db \
+  -H "x-internal-key: your-internal-api-key"
 
 # With formatted output (requires jq)
-curl -X GET http://localhost:3000/api/health/db | jq .
-
-# Save response to file
-curl -X GET http://localhost:3000/api/health/db -o health-check.json
+curl -X GET http://localhost:3000/api/health/db \
+  -H "x-internal-key: your-internal-api-key" | jq .
 ```
 
-### Production Testing
+### Production Test
 
 ```bash
-# Replace with your production domain
-curl -X GET https://autolenis.com/api/health/db
-
-# With formatted output
-curl -X GET https://autolenis.com/api/health/db | jq .
+curl -X GET https://autolenis.com/api/health/db \
+  -H "x-internal-key: your-internal-api-key" | jq .
 ```
 
-## 5. Example Outputs
+## 5. Example Responses
 
-### ✅ Success - Table Exists with Data
+### ✅ Success
 
 **HTTP Status**: 200 OK
 
 ```json
 {
   "ok": true,
-  "projectRef": "abc123xyz",
   "latencyMs": 234,
-  "lastCanaryRow": {
-    "id": 1,
-    "created_at": "2024-01-15T10:30:00.000Z",
-    "message": "canary alive"
-  }
+  "correlationId": "b3e4f1a2-...",
+  "timestamp": "2024-01-15T10:30:00.000Z"
 }
 ```
 
-**Interpretation**: Connected to Supabase project `abc123xyz`, query took 234ms, table has data.
-
-### ✅ Success - Table Exists but Empty
-
-**HTTP Status**: 200 OK
-
-```json
-{
-  "ok": true,
-  "projectRef": "abc123xyz",
-  "latencyMs": 189,
-  "lastCanaryRow": null
-}
-```
-
-**Interpretation**: Connected to Supabase project `abc123xyz`, table exists but has no rows.
-
-### ❌ Failure - Table Does Not Exist
+### ❌ Canary Table Missing
 
 **HTTP Status**: 503 Service Unavailable
 
 ```json
 {
   "ok": false,
-  "projectRef": "abc123xyz",
   "latencyMs": 156,
-  "error": "Table public._connection_canary does not exist"
+  "correlationId": "b3e4f1a2-...",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "error": "Canary table not found"
 }
 ```
 
-**Action Required**: Run the SQL migration to create the table (see section 2).
+**Action**: Run the migration (section 2).
 
-### ❌ Failure - Missing Environment Variables
-
-**HTTP Status**: 500 Internal Server Error
-
-```json
-{
-  "ok": false,
-  "error": "Missing Supabase environment variables",
-  "latencyMs": 1
-}
-```
-
-**Action Required**: 
-1. Check your `.env.local` file (local development)
-2. Check your Vercel environment variables (production)
-3. Ensure both `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set
-
-### ❌ Failure - Database Unreachable
+### ❌ Environment Variables Missing
 
 **HTTP Status**: 503 Service Unavailable
 
 ```json
 {
   "ok": false,
-  "projectRef": "abc123xyz",
-  "latencyMs": 5234,
-  "error": "Connection timeout"
+  "correlationId": "b3e4f1a2-...",
+  "timestamp": "2024-01-15T10:30:00.000Z"
 }
 ```
 
-**Action Required**: Check your Supabase project status and network connectivity.
+**Action**: Set `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`.
+
+### ❌ Unauthenticated Call
+
+**HTTP Status**: 401 Unauthorized
+
+```json
+{
+  "error": { "code": "UNAUTHENTICATED", "message": "Authentication required" },
+  "correlationId": "b3e4f1a2-..."
+}
+```
+
+**Action**: Pass the `x-internal-key` header or authenticate as an admin user.
 
 ## 6. Verification Checklist
 
-- [ ] Environment variables are configured
-- [ ] Can parse `projectRef` from response (confirms which project)
-- [ ] Canary table exists in Supabase
-- [ ] Health check returns HTTP 200
-- [ ] Response includes `ok: true`
-- [ ] Response includes correct `projectRef`
-- [ ] `lastCanaryRow` contains data
+- [ ] `.env.local` created from `.env.example`
+- [ ] `NEXT_PUBLIC_SUPABASE_URL` set to your Supabase project URL
+- [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY` (or publishable key) set
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` set
+- [ ] `SUPABASE_PROJECT_ID` set (for Supabase CLI commands)
+- [ ] Migration applied (`pnpm supabase:db:push` or manual SQL)
+- [ ] `INTERNAL_API_KEY` set (for CLI health checks)
+- [ ] Health check returns HTTP 200 with `ok: true`
 
 ## 7. Troubleshooting
 
-### Problem: Getting 500 error
+### Problem: 503 — no `error` field in body
 
-**Solution**: Check environment variables
+Missing environment variables. Check `.env.local`:
+
 ```bash
-# Local development - verify .env.local exists
-cat .env.local | grep SUPABASE
-
-# Should show (with actual values):
-# NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-# SUPABASE_SERVICE_ROLE_KEY=eyJ...
+grep SUPABASE .env.local
+# Should show NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY
 ```
 
-### Problem: Getting 503 error with "table does not exist"
+### Problem: 503 — `"error": "Canary table not found"`
 
-**Solution**: Run the SQL migration
-1. Go to Supabase Dashboard → SQL Editor
-2. Run the SQL from section 2 or migration file
-3. Verify table exists:
-   ```sql
-   SELECT * FROM public._connection_canary;
-   ```
+The `_connection_canary` table does not exist. Run the migration:
 
-### Problem: Response shows wrong projectRef
+```bash
+pnpm supabase:link   # link CLI to your project (once)
+pnpm supabase:db:push
+```
 
-**Solution**: Check `NEXT_PUBLIC_SUPABASE_URL`
-1. Verify the URL matches your intended Supabase project
-2. The `projectRef` is extracted from the subdomain (e.g., `abc123.supabase.co` → `abc123`)
+Or manually run the SQL from section 2 in Supabase Dashboard → SQL Editor.
+
+### Problem: 401 Unauthorized
+
+Pass the `INTERNAL_API_KEY` as the `x-internal-key` header, or sign in as an admin user.
+
+### Problem: Supabase CLI link fails
+
+```bash
+# Ensure SUPABASE_PROJECT_ID is set, then:
+pnpm supabase link --project-ref $SUPABASE_PROJECT_ID
+```
 
 ## 8. Security Notes
 
-- ✅ Service role key is used server-side only
-- ✅ Key is never logged or exposed in responses
-- ✅ Only the parsed `projectRef` (subdomain) is returned
-- ✅ Health check endpoint is safe for monitoring tools
-
-## 9. Continuous Monitoring
-
-### Using the Endpoint for Monitoring
-
-This endpoint can be used by:
-- Uptime monitoring services (Pingdom, UptimeRobot, etc.)
-- CI/CD health checks
-- Kubernetes readiness/liveness probes
-- Internal monitoring dashboards
-
-Example monitoring check:
-```bash
-#!/bin/bash
-RESPONSE=$(curl -s http://localhost:3000/api/health/db)
-OK=$(echo $RESPONSE | jq -r '.ok')
-
-if [ "$OK" = "true" ]; then
-  echo "✅ Database healthy"
-  exit 0
-else
-  echo "❌ Database unhealthy: $RESPONSE"
-  exit 1
-fi
-```
+- ✅ `SUPABASE_SERVICE_ROLE_KEY` is used server-side only — never returned in responses or logs
+- ✅ Health check endpoint requires admin authentication — not exposed to unauthenticated users
+- ✅ Canary table grants `SELECT` to `service_role` only — `anon` and `authenticated` roles are revoked
+- ✅ Response never includes the project reference, service key hints, or raw DB error messages
