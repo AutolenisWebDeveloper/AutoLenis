@@ -51,12 +51,12 @@ function extractNavIcons(src: string): string[] {
   return icons
 }
 
-/** Extract icon map keys from layout-client.tsx */
+/** Extract icon map keys from layout-client.tsx (handles multiline object) */
 function extractIconMapKeys(src: string): string[] {
-  const mapMatch = src.match(/const iconMap[^{]*\{([^}]+)\}/)
+  const mapMatch = src.match(/const iconMap[^{]*\{([\s\S]*?)\}\s*\n/)
   if (!mapMatch) return []
   return mapMatch[1]
-    .split(",")
+    .split(/[\n,]/)
     .map((s) => s.trim())
     .filter((s) => s.length > 0 && !s.startsWith("//"))
 }
