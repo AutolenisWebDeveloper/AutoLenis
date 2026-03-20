@@ -330,6 +330,14 @@ function checkWorkspaceScoping(): CheckResult {
 }
 
 // ── Check 7: API route handler error handling ─────────────────────────────
+
+// Framework-delegated route handlers that manage their own error handling
+// internally and must NOT be wrapped in try/catch (it would break them).
+// Each entry is a relative path from the project root.
+const FRAMEWORK_OWNED_ROUTES: string[] = [
+  "app/api/auth/[...nextauth]/route.ts",
+];
+
 function checkRouteErrorHandling(): CheckResult {
   const violations: Violation[] = [];
   const routeFiles = findFiles(path.resolve("app/api"), ["route.ts"]);
@@ -340,6 +348,10 @@ function checkRouteErrorHandling(): CheckResult {
 
     // Skip very short files — 410 stubs, redirects, and simple re-exports
     if (content.length < 200) continue;
+
+    // Skip framework-delegated handlers (e.g. NextAuth) that own their error handling.
+    // These re-export a framework-created handler and must not be wrapped in try/catch.
+    if (FRAMEWORK_OWNED_ROUTES.some((r) => relPath === r || relPath.endsWith(r))) continue;
 
     // Skip simple mock/stub routes that only await auth (getSessionUser/requireAuth)
     // and return static JSON — no DB, no fetch, no external calls

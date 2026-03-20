@@ -459,5 +459,28 @@ export async function GET() {
       // Admin route auth check must produce errors
       expect(content).toMatch(/severity:\s*"error"[\s\S]*admin-route-auth/);
     });
+
+    it("route error handling exempts framework-owned handlers like NextAuth", () => {
+      const content = fs.readFileSync(
+        path.resolve("scripts/governance/check-architecture.ts"),
+        "utf-8"
+      );
+      // Must have a FRAMEWORK_OWNED_ROUTES list with the NextAuth route
+      expect(content).toContain("FRAMEWORK_OWNED_ROUTES");
+      expect(content).toContain("app/api/auth/[...nextauth]/route.ts");
+    });
+
+    it("framework-owned routes exemption is narrow and explicit", () => {
+      const content = fs.readFileSync(
+        path.resolve("scripts/governance/check-architecture.ts"),
+        "utf-8"
+      );
+      // The exemption list must be a small, explicit array — not a broad pattern
+      const match = content.match(/FRAMEWORK_OWNED_ROUTES[^=]*=\s*\[([\s\S]*?)\]/);
+      expect(match).toBeTruthy();
+      // Count entries — should be exactly 1 (just NextAuth for now)
+      const entries = match![1].split(",").filter((e: string) => e.trim().length > 0);
+      expect(entries.length).toBe(1);
+    });
   });
 });
