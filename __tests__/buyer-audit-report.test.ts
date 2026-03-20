@@ -939,24 +939,30 @@ describe("D. End-to-End Flow Findings", () => {
     }
   })
 
-  it("deal/contract is a stub redirect (known defect DEF-005)", () => {
+  it("deal/contract is now a full implementation (DEF-005 FIXED)", () => {
     const content = read(join(BUYER, "deal/contract/page.tsx"))
-    // Stub pages are very short (< 30 lines)
+    // Fixed: no longer a stub redirect — now has deal context + contract shield UI
     const lines = content.split("\n").length
-    expect(lines).toBeLessThan(30)
+    expect(lines).toBeGreaterThan(30)
+    expect(content).toContain("Contract Shield")
+    expect(content).toContain("/api/buyer/deal")
+    expect(content).toContain("/api/buyer/contract-shield")
   })
 
-  it("deal/summary is a stub redirect (known defect DEF-003)", () => {
+  it("deal/summary is now a full implementation (DEF-003 FIXED)", () => {
     const content = read(join(BUYER, "deal/summary/page.tsx"))
+    // Fixed: no longer a stub redirect — now has deal data display
     const lines = content.split("\n").length
-    expect(lines).toBeLessThan(30)
+    expect(lines).toBeGreaterThan(30)
+    expect(content).toContain("Deal Summary")
+    expect(content).toContain("/api/buyer/deal")
   })
 })
 
 describe("E. Broken/Missing Pages Report", () => {
-  const STUB_PAGES = [
-    { path: "deal/summary", defect: "DEF-003" },
-    { path: "deal/contract", defect: "DEF-005" },
+  const FIXED_PAGES = [
+    { path: "deal/summary", defect: "DEF-003", keyword: "Deal Summary" },
+    { path: "deal/contract", defect: "DEF-005", keyword: "Contract Shield" },
   ]
   const REDIRECT_PAGES = [
     { path: "esign", target: "/buyer/deal/esign" },
@@ -964,11 +970,12 @@ describe("E. Broken/Missing Pages Report", () => {
     { path: "request", target: "/buyer/requests" },
   ]
 
-  for (const stub of STUB_PAGES) {
-    it(`${stub.path} is a known stub (${stub.defect})`, () => {
-      const content = read(join(BUYER, stub.path, "page.tsx"))
+  for (const page of FIXED_PAGES) {
+    it(`${page.path} is now a full implementation (${page.defect} FIXED)`, () => {
+      const content = read(join(BUYER, page.path, "page.tsx"))
       expect(content.length).toBeGreaterThan(0)
-      expect(content.split("\n").length).toBeLessThan(30)
+      expect(content.split("\n").length).toBeGreaterThan(30)
+      expect(content).toContain(page.keyword)
     })
   }
 

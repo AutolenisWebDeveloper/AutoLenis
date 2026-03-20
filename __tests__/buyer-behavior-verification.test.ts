@@ -124,18 +124,15 @@ describe("Behavior: Vehicle Search", () => {
     expect(content.toLowerCase()).toMatch(/make|body|model/)
   })
 
-  it("DEFECT: search filter state is managed but not applied to API query (_setFilters unused)", () => {
+  it("FIXED: search filter state is wired to filtering logic (DEF-001 FIXED)", () => {
     const content = read(join(BUYER, "search/page.tsx"))
-    // This test documents the known defect DEF-001
+    // DEF-001 was fixed — _setFilters renamed to setFilters and wired to onChange handlers
     const hasUnusedSetter = content.includes("_setFilters") || content.includes("_setFilter")
-    // If the defect is fixed, this will flip — which is good
-    if (hasUnusedSetter) {
-      // DEF-001 still present
-      expect(true).toBe(true)
-    } else {
-      // DEF-001 was fixed — filters are now wired
-      expect(content).toMatch(/filter.*search|query.*filter/i)
-    }
+    expect(hasUnusedSetter).toBe(false)
+    // Verify filter state is actually used
+    expect(content).toContain("setFilters")
+    expect(content).toContain("applyFilters")
+    expect(content).toContain("onChange")
   })
 })
 

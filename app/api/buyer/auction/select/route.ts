@@ -2,19 +2,22 @@ import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth-server"
 import { createClient } from "@/lib/supabase/server"
 import { BestPriceService } from "@/lib/services/best-price.service"
+import { auctionSelectSchema } from "@/lib/validators/buyer-mutations"
 
 export async function POST(request: Request) {
   try {
     const session = await requireAuth(["BUYER"])
     const body = await request.json()
 
-    const { auctionId, offerId, financingOptionId } = body
-    if (!auctionId || !offerId) {
+    const parsed = auctionSelectSchema.safeParse(body)
+    if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: "auctionId and offerId are required" },
+        { success: false, error: parsed.error.errors[0]?.message || "Invalid request body" },
         { status: 400 },
       )
     }
+
+    const { auctionId, offerId, financingOptionId } = parsed.data
 
     const supabase = await createClient()
 

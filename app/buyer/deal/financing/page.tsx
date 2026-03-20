@@ -189,7 +189,7 @@ export default function DealFinancingPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-bold tabular-nums text-[#0066FF]">${option.monthlyPayment}</p>
+                    <p className="text-2xl font-bold tabular-nums text-[#0066FF]">${typeof option.monthlyPayment === 'number' ? option.monthlyPayment.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : option.monthlyPayment}</p>
                     <p className="text-xs text-muted-foreground">/month</p>
                   </div>
                 </div>
