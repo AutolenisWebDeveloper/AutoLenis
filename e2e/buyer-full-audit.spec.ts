@@ -780,8 +780,8 @@ test.describe("Buyer Full Audit — G: Runtime Error Detection", () => {
       try {
         const { status, redirectedToAuth } = await loadBuyerPage(page, route)
         if (status >= 500 || redirectedToAuth) continue
-        // Wait briefly for any async rendering errors
-        await page.waitForTimeout(1_000)
+        // Wait for network to settle to catch async rendering errors
+        await page.waitForLoadState("networkidle").catch(() => {})
       } catch {
         // Skip navigation failures
       }

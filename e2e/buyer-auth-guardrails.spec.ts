@@ -252,9 +252,9 @@ test.describe("Buyer Auth Guardrails — Wrong Role Denial", () => {
         `${path} with invalid token returned ${status}`,
       ).toBeLessThan(500)
       expect(
-        [401, 403],
-        `${path} should return 401/403 for invalid token`,
-      ).toContain(status)
+        status === 401 || status === 403,
+        `${path} should return 401/403 for invalid token, got ${status}`,
+      ).toBeTruthy()
     }
   })
 })
