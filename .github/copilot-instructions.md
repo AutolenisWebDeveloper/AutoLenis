@@ -35,6 +35,23 @@ Reason at the level of a senior staff engineer: every decision must be defensibl
 
 ---
 
+## Priority Order
+
+When constraints conflict, resolve in this order unless the task explicitly requires otherwise:
+
+1. **Correctness** — behavior must be provably right
+2. **Security** — no exploitable surface introduced
+3. **Compatibility** — no silent breakage to callers or consumers
+4. **Scope control** — smallest change that fully solves the problem
+5. **Maintainability** — readable, typed, testable, observable
+6. **Performance** — correct complexity class for the cardinality
+7. **Elegance** — only after 1–6 are satisfied
+
+Do not sacrifice a higher-priority item to improve a lower-priority one.
+If a fix is architecturally impure but correct, secure, and compatible, ship the fix and document the debt explicitly.
+
+---
+
 ## Execution Standards (Non-Negotiable)
 
 ### Operating Principles
@@ -80,10 +97,53 @@ Before making changes, always determine:
 5. **What the cleanest durable fix is** — prefer system-level corrections over local workarounds.
 6. **How to verify the fix conclusively** — define validation criteria before implementing.
 
+**Narrow vs structural fix:**
+- Default to the narrowest correct fix.
+- Escalate to a structural fix only when the narrow fix masks root cause, introduces fragility, or creates immediate rework.
+- Do not expand scope for cleanup or refactoring unless required for correctness, security, compatibility, or task completion.
+
 ### Quality Bar
 - If a solution is **incomplete, fragile, inconsistent, weakly verified, or architecturally sloppy**, it is **not finished**.
 - Only produce work that is **implementation-ready, production-safe, and professionally defensible**.
 - Every change must be defensible under: **code review, incident review, audit review, scale review, and long-term maintenance review**.
+
+---
+
+## Hard Coding Standards
+
+These standards apply to every code output.
+
+### Types
+- All boundary-facing and non-trivial types explicit — no implicit `any`.
+- Generics constrained; union types discriminated when behavior differs by variant.
+- Null and undefined propagation resolved on every meaningful path.
+- Never introduce `any` types in new code; use precise types, generics, or branded types.
+
+### Logic
+- All meaningful execution paths handled: defaults, failures, exceptions, and early returns.
+- Loop invariants and termination conditions verified before writing the loop.
+- Index arithmetic, pagination, cursors, offsets, and boundary transitions checked explicitly.
+- No floating promises; no unhandled rejections; no implicit execution-order dependencies.
+
+### Security
+- Input validated at every trust boundary — upstream validation is never assumed sufficient.
+- Injection surfaces parameterized or escaped: SQL, shell, HTML, headers, logs, URLs, templates.
+- Authentication and authorization enforced at the correct architectural layer.
+- Sensitive data never over-logged, unintentionally client-exposed, unsafely cached, or retained beyond lifecycle need.
+
+### Integration
+- Imports, exports, middleware chains, DI wiring, and schema contracts verified in execution context.
+- No parameter inversion, encoding mismatch, or silent contract drift.
+
+### Completeness
+- No placeholders on critical paths; no deferred core logic.
+- Every changed function, route, handler, and job is implementation-complete.
+
+### Efficiency
+- Correct complexity class selected before writing.
+- No N+1 queries; no unbounded fetches without explicit cardinality justification.
+- No missing pagination where result sets can grow materially.
+- No blocking I/O in async-sensitive contexts.
 
 ---
 
@@ -274,3 +334,44 @@ Before any change is merged, verify:
 4) Provide verification commands (`pnpm lint`, `pnpm typecheck`, `pnpm test:unit`, `pnpm test:e2e`).
 5) Note migrations/rollbacks if schema changes are involved.
 6) Call out any security, performance, or compliance implications of the change.
+
+---
+
+## Fallback Behavior Under Constraint
+
+| Condition | Required Action |
+|---|---|
+| Context is incomplete | State exactly what is missing and what bounded assumption was made. Proceed only if the assumption is low-risk. |
+| Verification cannot be run | State what was verified, what could not be verified, and what risk remains. Do not claim full completion. |
+| Safest fix requires a breaking change | Prefer the safest compatible fix unless the task explicitly authorizes the breaking change. Document the required break, affected callers, and migration path. |
+| Codebase already violates the standard | Apply the standard to new code. Do not silently propagate the violation. Note broader remediation separately. |
+| Correct fix exceeds task scope | Implement the minimal in-scope fix correctly and document the broader follow-up required. |
+
+---
+
+## Repo-Specific Configuration
+
+- **Authoritative files:** `.github/copilot-instructions.md`, `github/copilot-instructions.md`, `github/copilot-instructions-elite.md`, `github/instructions/*.instructions.md`
+- **Architecture owner:** AutoLenis maintainers
+- **Required verification:** `pnpm typecheck`, `pnpm lint`, `pnpm test:unit`, `pnpm test:e2e`
+- **Test conventions:** Vitest (unit, `__tests__/`), Playwright (e2e, `e2e/`), `vi.mock()` for externals
+- **Schema migration rules:** Prisma (`prisma/schema.prisma`) for core models; Supabase SQL (`supabase/migrations/`) for RLS, views, functions
+- **Prohibited patterns:** `any` types, raw SQL interpolation, hard-coded secrets, `SendGrid`, ad-hoc rate limiting, client-trusted role/workspace IDs
+- **Security hotspots:** `lib/auth.ts`, `lib/auth-server.ts`, `lib/auth-edge.ts`, `proxy.ts`, `middleware.ts`, `app/api/webhooks/`, `app/api/auth/`
+- **Framework standards:** Next.js App Router (server-first), Zod validation, Prisma ORM, Supabase RLS, Resend email, Stripe payments
+
+---
+
+## Output Quality Gate
+
+Output is not complete unless **all** of the following are true:
+
+- [ ] Correct behavior on happy path, boundaries, invalid input, and failure paths
+- [ ] No new security surface introduced
+- [ ] Caller and consumer contracts preserved, or breakage explicitly documented
+- [ ] Complexity class appropriate for the problem
+- [ ] No N+1 or unbounded query patterns
+- [ ] No placeholders or deferred critical logic
+- [ ] Deployable as-is, or explicitly marked with remaining verification constraints
+
+Prefer implementation over commentary. Explain only what is necessary to justify assumptions, risk, breakage, or verification gaps. If any item is false, the work is not done.
