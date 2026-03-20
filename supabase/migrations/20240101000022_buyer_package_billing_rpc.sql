@@ -172,7 +172,9 @@ $$;
 -- ---------------------------------------------------------------------------
 -- RPC 3: mark_buyer_deposit_paid
 --   Called by Stripe webhook on successful deposit payment.
---   p_amount is in dollars (not cents).
+--   p_amount is in dollars (not cents) to match the TypeScript service layer
+--   interface (buyer-package.service.ts converts Stripe's cents to dollars
+--   before calling). Converted to cents internally for storage.
 -- ---------------------------------------------------------------------------
 create or replace function mark_buyer_deposit_paid(
   p_buyer_id            text,
@@ -218,7 +220,7 @@ $$;
 -- ---------------------------------------------------------------------------
 -- RPC 4: mark_buyer_deposit_failed
 --   Called by Stripe webhook on failed deposit payment.
---   p_amount is in dollars (not cents).
+--   p_amount is in dollars (not cents) — see RPC 3 comment for rationale.
 -- ---------------------------------------------------------------------------
 create or replace function mark_buyer_deposit_failed(
   p_buyer_id            text,
@@ -250,7 +252,7 @@ $$;
 -- ---------------------------------------------------------------------------
 -- RPC 5: mark_buyer_deposit_refunded
 --   Called by Stripe webhook on deposit refund.
---   p_amount is in dollars (not cents).
+--   p_amount is in dollars (not cents) — see RPC 3 comment for rationale.
 -- ---------------------------------------------------------------------------
 create or replace function mark_buyer_deposit_refunded(
   p_buyer_id            text,
@@ -295,7 +297,7 @@ $$;
 -- ---------------------------------------------------------------------------
 -- RPC 6: record_premium_fee_payment
 --   Called by Stripe webhook on successful premium/service fee payment.
---   p_amount is in dollars (not cents).
+--   p_amount is in dollars (not cents) — see RPC 3 comment for rationale.
 -- ---------------------------------------------------------------------------
 create or replace function record_premium_fee_payment(
   p_buyer_id            text,
