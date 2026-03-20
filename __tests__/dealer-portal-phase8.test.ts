@@ -124,7 +124,7 @@ describe("getInvitesForDealer", () => {
 
     const result = await service.getInvitesForDealer("d-1")
 
-    expect(mockFrom).toHaveBeenCalledWith("sourcing_case_invites")
+    expect(mockFrom).toHaveBeenCalledWith("dealer_portal_invites")
     expect(result).toHaveLength(1)
     expect(result[0].id).toBe("inv-1")
   })
@@ -247,7 +247,7 @@ describe("submitOffer", () => {
 
     expect(result.id).toBe("offer-1")
     expect(result.status).toBe("SUBMITTED")
-    expect(mockFrom).toHaveBeenCalledWith("sourcing_case_offers")
+    expect(mockFrom).toHaveBeenCalledWith("dealer_portal_offers")
   })
 
   it("throws if invite auto-transition fails after offer insert", async () => {
@@ -311,7 +311,7 @@ describe("getOffersForInvite", () => {
     const result = await service.getOffersForInvite("inv-1", "d-1")
 
     expect(result).toHaveLength(2)
-    expect(mockFrom).toHaveBeenCalledWith("sourcing_case_offers")
+    expect(mockFrom).toHaveBeenCalledWith("dealer_portal_offers")
   })
 })
 
@@ -335,7 +335,7 @@ describe("mapExternalDealer", () => {
     })
 
     expect(result.external_dealer_name).toBe("Joe's Cars")
-    expect(mockFrom).toHaveBeenCalledWith("external_dealer_matches")
+    expect(mockFrom).toHaveBeenCalledWith("dealer_portal_external_matches")
   })
 
   it("throws on upsert failure", async () => {
@@ -363,7 +363,7 @@ describe("getExternalMatches", () => {
     const result = await service.getExternalMatches("d-1")
 
     expect(result).toHaveLength(1)
-    expect(mockFrom).toHaveBeenCalledWith("external_dealer_matches")
+    expect(mockFrom).toHaveBeenCalledWith("dealer_portal_external_matches")
   })
 })
 
@@ -402,7 +402,7 @@ describe("Phase 8 migration", () => {
     expect(fs.existsSync(migrationPath)).toBe(true)
   })
 
-  it("migration creates sourcing_case_invites table", () => {
+  it("migration creates dealer_portal_invites table", () => {
     const fs = require("fs")
     const path = require("path")
     const sql = fs.readFileSync(
@@ -412,7 +412,7 @@ describe("Phase 8 migration", () => {
       ),
       "utf-8",
     )
-    expect(sql).toContain("create table if not exists sourcing_case_invites")
+    expect(sql).toContain("create table if not exists dealer_portal_invites")
     expect(sql).toContain("PENDING")
     expect(sql).toContain("SENT")
     expect(sql).toContain("VIEWED")
@@ -421,7 +421,7 @@ describe("Phase 8 migration", () => {
     expect(sql).toContain("EXPIRED")
   })
 
-  it("migration creates sourcing_case_offers table", () => {
+  it("migration creates dealer_portal_offers table", () => {
     const fs = require("fs")
     const path = require("path")
     const sql = fs.readFileSync(
@@ -431,7 +431,7 @@ describe("Phase 8 migration", () => {
       ),
       "utf-8",
     )
-    expect(sql).toContain("create table if not exists sourcing_case_offers")
+    expect(sql).toContain("create table if not exists dealer_portal_offers")
     expect(sql).toContain("SUBMITTED")
     expect(sql).toContain("UNDER_REVIEW")
     expect(sql).toContain("SHORTLISTED")
@@ -440,7 +440,7 @@ describe("Phase 8 migration", () => {
     expect(sql).toContain("WITHDRAWN")
   })
 
-  it("migration creates external_dealer_matches table", () => {
+  it("migration creates dealer_portal_external_matches table", () => {
     const fs = require("fs")
     const path = require("path")
     const sql = fs.readFileSync(
@@ -450,7 +450,7 @@ describe("Phase 8 migration", () => {
       ),
       "utf-8",
     )
-    expect(sql).toContain("create table if not exists external_dealer_matches")
+    expect(sql).toContain("create table if not exists dealer_portal_external_matches")
     expect(sql).toContain("external_dealer_name")
     expect(sql).toContain("external_dealer_source")
     expect(sql).toContain("dealer_id")
