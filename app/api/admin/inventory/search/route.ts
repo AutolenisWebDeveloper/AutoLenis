@@ -54,14 +54,17 @@ export async function GET(req: NextRequest) {
     if (hasPrice === false) query = query.or("price.is.null,price.eq.0")
 
     if (q) {
+      // Sanitize search input: escape PostgREST filter-syntax characters
+      // to prevent filter injection via the .or() clause.
+      const sanitized = q.replace(/[%_\\,().]/g, "\\$&")
       query = query.or(
         [
-          `vin.ilike.%${q}%`,
-          `make.ilike.%${q}%`,
-          `model.ilike.%${q}%`,
-          `trim.ilike.%${q}%`,
-          `dealer_name.ilike.%${q}%`,
-          `zip.ilike.%${q}%`,
+          `vin.ilike.%${sanitized}%`,
+          `make.ilike.%${sanitized}%`,
+          `model.ilike.%${sanitized}%`,
+          `trim.ilike.%${sanitized}%`,
+          `dealer_name.ilike.%${sanitized}%`,
+          `zip.ilike.%${sanitized}%`,
         ].join(","),
       )
     }
