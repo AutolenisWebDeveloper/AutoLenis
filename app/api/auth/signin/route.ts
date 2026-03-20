@@ -23,6 +23,39 @@ export async function POST(request: Request) {
   const correlationId = crypto.randomUUID()
   logger.info("SignIn request received", { correlationId })
 
+  // ── Parse & validate BEFORE env-var check ─────────────────────────────
+  // This ensures schema validation errors always return 400, even in CI
+  // environments where Supabase is not configured.
+  let body
+  try {
+    body = await request.json()
+  } catch (parseError) {
+    logger.error("Failed to parse signin request body", parseError, { correlationId })
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Invalid request format",
+      },
+      { status: 400 },
+    )
+  }
+
+  logger.debug("Parsing signin request", { email: body.email, correlationId })
+
+  // Use safeParse so invalid inputs always return 400, never 500
+  const parseResult = signInSchema.safeParse(body)
+  if (!parseResult.success) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: parseResult.error.errors[0]?.message || "Validation failed",
+        code: "VALIDATION_ERROR",
+      },
+      { status: 400 },
+    )
+  }
+  const validated = parseResult.data
+
   if (!process.env['NEXT_PUBLIC_SUPABASE_URL'] || !process.env['SUPABASE_SERVICE_ROLE_KEY']) {
     logger.error("Missing required environment variables for signin", undefined, { correlationId })
     return NextResponse.json(
@@ -40,23 +73,6 @@ export async function POST(request: Request) {
       return rateLimitResponse
     }
 
-    let body
-    try {
-      body = await request.json()
-    } catch (parseError) {
-      logger.error("Failed to parse signin request body", parseError, { correlationId })
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Invalid request format",
-        },
-        { status: 400 },
-      )
-    }
-
-    logger.debug("Parsing signin request", { email: body.email, correlationId })
-
-    const validated = signInSchema.parse(body)
     logger.debug("Signin input validated, calling AuthService", { correlationId })
 
     const result = await AuthService.signIn(validated)

@@ -1,10 +1,9 @@
 // Health check endpoint for monitoring
 // Returns service status and database connectivity
-// Protected: requires admin auth or internal API key
+// Public endpoint — no authentication required
 
 import { NextResponse, type NextRequest } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { getSession, isAdminRole } from "@/lib/auth-server"
 
 export const dynamic = "force-dynamic"
 
@@ -22,19 +21,9 @@ export async function OPTIONS() {
 }
 
 export async function GET(request: NextRequest) {
-  // Require admin auth or internal API key
-  const internalKey = process.env["INTERNAL_API_KEY"]
-  const authHeader = request.headers.get("x-internal-key")
-
-  if (internalKey && authHeader === internalKey) {
-    // Internal key auth — proceed
-  } else {
-    const session = await getSession()
-    if (!session || !isAdminRole(session.role)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-  }
-
+  // Health check is a public endpoint — monitoring tools and uptime checkers
+  // must be able to query it without credentials. No sensitive information is
+  // returned; the response only indicates service/database availability.
   const startTime = Date.now()
 
   try {
