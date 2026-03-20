@@ -90,3 +90,17 @@ jobs:
 
       - name: Schema contract check
         run: npx tsx scripts/check-schema-contract.ts
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test:unit
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E tests (smoke)
+        run: pnpm test:e2e --project=chromium
+        env:
+          CI: "true"
+
