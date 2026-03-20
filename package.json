@@ -125,7 +125,8 @@
     "tsx": "latest",
     "vaul": "^1.1.2",
     "yaml": "latest",
-    "zod": "3.25.76"
+    "zod": "3.25.76",
+    "tmp": "^0.2.5"
   },
   "devDependencies": {
     "@edge-runtime/vm": "latest",

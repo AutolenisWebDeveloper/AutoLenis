@@ -9,6 +9,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+import * as tmp from "tmp";
 
 // ── Test that the governance script itself is valid ────────────────────────
 describe("Architecture Governance", () => {
@@ -174,7 +175,7 @@ describe("Architecture Governance", () => {
   });
 
   describe("Governance checks — buyer auth pattern detection", () => {
-    const fixtureDir = path.join(os.tmpdir(), "governance-test-fixtures");
+    const fixtureDir = tmp.dirSync({ prefix: "governance-test-fixtures-" }).name;
 
     beforeAll(() => {
       fs.mkdirSync(`${fixtureDir}/app/api/buyer/test-valid`, {
