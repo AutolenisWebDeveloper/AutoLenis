@@ -7,7 +7,7 @@ import useSWR from "swr"
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export default function AdminRefundsPage() {
-  const { data, error, isLoading } = useSWR("/api/admin/refund", fetcher)
+  const { data, error, isLoading } = useSWR("/api/admin/payments/refunds", fetcher)
 
   if (isLoading) {
     return (
