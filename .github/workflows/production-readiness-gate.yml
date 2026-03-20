@@ -90,6 +90,10 @@ jobs:
       - name: "Schema contract gate: check field names and route guards"
         run: pnpm check:schema-contract
 
+      # Architecture governance gate: layer boundaries, auth patterns, workspace scoping
+      - name: "Architecture governance gate"
+        run: pnpm check:architecture
+
       # Run production readiness tests
       - name: "Production readiness tests"
         run: pnpm test:unit -- --run __tests__/production-readiness-complete.test.ts __tests__/production-readiness-hardening.test.ts __tests__/contract-access-control.test.ts __tests__/schema-contract-alignment.test.ts __tests__/service-role-scanner.test.ts
