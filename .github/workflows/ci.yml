@@ -90,6 +90,10 @@ jobs:
 
       - name: Schema contract check
         run: npx tsx scripts/check-schema-contract.ts
+
+      - name: Architecture governance check
+        run: pnpm check:architecture
+
       - name: Type check
         run: pnpm typecheck
 
