@@ -41,3 +41,6 @@ next-env.d.ts
 
 # vitest coverage output
 /coverage/
+
+# supabase local development
+.supabase/
