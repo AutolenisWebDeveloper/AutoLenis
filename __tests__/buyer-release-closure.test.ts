@@ -158,8 +158,7 @@ describe("A. Defect Fix Verification", () => {
 
     it("DEF-004 FIXED: financing page formats monthlyPayment as currency", () => {
       const content = read(join(BUYER, "deal/financing/page.tsx"))
-      expect(content).toContain("toLocaleString")
-      expect(content).toContain("minimumFractionDigits")
+      expect(content).toContain("formatCurrencyDollars")
     })
   })
 
