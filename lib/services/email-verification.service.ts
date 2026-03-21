@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { emailService } from "@/lib/services/email.service"
 import crypto from "node:crypto"
 import { logger } from "@/lib/logger"
@@ -25,6 +25,15 @@ setInterval(() => {
   }
 }, VERIFY_ON_SIGNIN_IDEMPOTENCY_WINDOW_MS)
 
+/**
+ * Helper: obtain a Supabase admin client.
+ * Wrapped so the service does not throw at module-import time when env vars
+ * are missing (e.g. during `next build`).
+ */
+function getSupabase() {
+  return createAdminClient()
+}
+
 export class EmailVerificationService {
   // Generate a secure verification token
   private generateToken(): string {
@@ -38,23 +47,36 @@ export class EmailVerificationService {
 
   // Create verification token for a user
   async createVerificationToken(userId: string, email: string, expiresInMs?: number): Promise<string> {
+    const supabase = getSupabase()
     const token = this.generateToken()
     const hashedToken = this.hashToken(token)
     const expiresAt = new Date(Date.now() + (expiresInMs ?? DEFAULT_TOKEN_EXPIRY_MS)).toISOString()
 
     // Delete any existing tokens for this user (invalidate prior tokens)
     try {
-      await prisma.$executeRaw`DELETE FROM "email_verification_tokens" WHERE "user_id" = ${userId}`
+      const { error: delError } = await supabase
+        .from("email_verification_tokens")
+        .delete()
+        .eq("user_id", userId)
+      if (delError) {
+        logger.warn("Failed to delete old verification tokens", { userId, error: delError.message })
+      }
     } catch (err) {
       logger.warn("Failed to delete old verification tokens", { userId, error: (err as Error).message })
     }
 
     // Store hashed token
-    try {
-      await prisma.$executeRaw`INSERT INTO "email_verification_tokens" ("user_id", "token", "expires_at") VALUES (${userId}, ${hashedToken}, ${expiresAt})`
-    } catch (err) {
-      logger.error("Failed to insert verification token", { userId, error: (err as Error).message })
-      throw new Error(`Failed to create verification token: ${(err as Error).message}`)
+    const { error: insertError } = await supabase
+      .from("email_verification_tokens")
+      .insert({
+        user_id: userId,
+        token: hashedToken,
+        expires_at: expiresAt,
+      })
+
+    if (insertError) {
+      logger.error("Failed to insert verification token", { userId, error: insertError.message })
+      throw new Error(`Failed to create verification token: ${insertError.message}`)
     }
 
     // Send verification email using the authoritative branded template.
@@ -65,7 +87,10 @@ export class EmailVerificationService {
     } catch (emailErr) {
       logger.error("Verification email send failed; removing token", { userId, email, error: (emailErr as Error).message })
       try {
-        await prisma.$executeRaw`DELETE FROM "email_verification_tokens" WHERE "user_id" = ${userId}`
+        await supabase
+          .from("email_verification_tokens")
+          .delete()
+          .eq("user_id", userId)
       } catch {
         // best-effort cleanup
       }
@@ -77,12 +102,22 @@ export class EmailVerificationService {
 
   // Verify token and mark email as verified
   async verifyEmail(token: string): Promise<{ success: boolean; message: string; userId?: string }> {
+    const supabase = getSupabase()
     const hashedToken = this.hashToken(token)
 
     // Find the token by its hash
-    let tokenRecords: any[]
+    let tokenRecords: { id: string; user_id: string; expires_at: string; used_at: string | null }[] | null
     try {
-      tokenRecords = await prisma.$queryRaw`SELECT "id", "user_id", "expires_at", "used_at" FROM "email_verification_tokens" WHERE "token" = ${hashedToken} LIMIT 1`
+      const { data, error } = await supabase
+        .from("email_verification_tokens")
+        .select("id, user_id, expires_at, used_at")
+        .eq("token", hashedToken)
+        .limit(1)
+      if (error) {
+        logger.error("Failed to look up verification token", { error: error.message })
+        return { success: false, message: "Verification failed. Please try again." }
+      }
+      tokenRecords = data
     } catch (err) {
       logger.error("Failed to look up verification token", { error: (err as Error).message })
       return { success: false, message: "Verification failed. Please try again." }
@@ -106,17 +141,27 @@ export class EmailVerificationService {
 
     // Mark token as used
     try {
-      await prisma.$executeRaw`UPDATE "email_verification_tokens" SET "used_at" = ${new Date().toISOString()} WHERE "id" = ${tokenRecord.id}`
+      const { error: updateError } = await supabase
+        .from("email_verification_tokens")
+        .update({ used_at: new Date().toISOString() })
+        .eq("id", tokenRecord.id)
+      if (updateError) {
+        logger.error("Failed to mark token as used", { tokenId: tokenRecord.id, error: updateError.message })
+      }
     } catch (err) {
       logger.error("Failed to mark token as used", { tokenId: tokenRecord.id, error: (err as Error).message })
     }
 
     // Mark user's email as verified
     try {
-      await prisma.user.update({
-        where: { id: tokenRecord.user_id },
-        data: { is_email_verified: true },
-      })
+      const { error: verifyError } = await supabase
+        .from("User")
+        .update({ is_email_verified: true })
+        .eq("id", tokenRecord.user_id)
+      if (verifyError) {
+        logger.error("Failed to mark email as verified", { userId: tokenRecord.user_id, error: verifyError.message })
+        return { success: false, message: "Verification failed. Please try again." }
+      }
     } catch (err) {
       logger.error("Failed to mark email as verified", { userId: tokenRecord.user_id, error: (err as Error).message })
       return { success: false, message: "Verification failed. Please try again." }
@@ -137,13 +182,21 @@ export class EmailVerificationService {
       }
     }
 
+    const supabase = getSupabase()
     const normalizedEmail = email.trim().toLowerCase()
 
-    const user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-      select: { id: true, email: true, role: true, is_email_verified: true },
-    })
+    const { data: users, error: userError } = await supabase
+      .from("User")
+      .select("id, email, role, is_email_verified")
+      .eq("email", normalizedEmail)
+      .limit(1)
 
+    if (userError) {
+      logger.error("resendVerificationByEmail: user lookup failed", { error: userError.message })
+      return
+    }
+
+    const user = users?.[0]
     if (!user) return
 
     // Silently bail if role is not allowed or already verified
@@ -161,10 +214,20 @@ export class EmailVerificationService {
 
   // Resend verification email (authenticated, by userId)
   async resendVerification(userId: string): Promise<{ success: boolean; message: string }> {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, email: true, is_email_verified: true },
-    })
+    const supabase = getSupabase()
+
+    const { data: users, error: userError } = await supabase
+      .from("User")
+      .select("id, email, is_email_verified")
+      .eq("id", userId)
+      .limit(1)
+
+    if (userError) {
+      logger.error("resendVerification: user lookup failed", { userId, error: userError.message })
+      return { success: false, message: "Unable to resend verification email. Please try again." }
+    }
+
+    const user = users?.[0]
 
     if (!user) {
       return { success: false, message: "User not found" }
@@ -181,14 +244,17 @@ export class EmailVerificationService {
 
   // Check if user's email is verified
   async isEmailVerified(userId: string): Promise<boolean> {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { is_email_verified: true },
-    })
+    const supabase = getSupabase()
 
-    if (!user) return false
+    const { data: users, error } = await supabase
+      .from("User")
+      .select("is_email_verified")
+      .eq("id", userId)
+      .limit(1)
 
-    return user.is_email_verified === true
+    if (error || !users || users.length === 0) return false
+
+    return users[0].is_email_verified === true
   }
 }
 
