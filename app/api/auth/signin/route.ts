@@ -88,7 +88,8 @@ export async function POST(request: Request) {
         {
           success: false,
           error: "EMAIL_NOT_VERIFIED",
-          message: "Please verify your email address before signing in. We just sent a new verification email.",
+          requiresEmailVerification: true,
+          message: "Please verify your email address before signing in.",
           verificationEmailSent: true,
         },
         { status: 403 },

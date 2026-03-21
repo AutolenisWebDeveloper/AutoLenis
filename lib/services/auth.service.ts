@@ -92,11 +92,13 @@ export class AuthService {
         // Initialize package + billing via canonical Supabase RPC
         // This populates package columns on BuyerProfile, creates billing row,
         // and writes initial history/ledger entries.
+        // Non-fatal: if the RPC is not yet deployed the buyer can still use
+        // their account — package can be initialized later via admin/dashboard.
         try {
           await initializeBuyerPackage(buyerProfileId, tier, "REGISTRATION", CURRENT_PACKAGE_VERSION)
-        } catch (rpcError: any) {
-          console.error(`[AuthService.signUp] initializeBuyerPackage RPC failed correlationId=${correlationId}`, rpcError)
-          throw new Error(`Failed to initialize buyer package. Please try again. (ref: ${correlationId})`)
+        } catch (rpcError: unknown) {
+          console.error(`[AuthService.signUp] initializeBuyerPackage RPC failed (non-fatal) correlationId=${correlationId}`, rpcError)
+          // Do NOT rethrow — user + profile are already persisted.
         }
 
         // Audit event: package selected at registration (best-effort)
