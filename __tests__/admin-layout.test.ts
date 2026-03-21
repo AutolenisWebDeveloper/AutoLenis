@@ -25,6 +25,7 @@ const navSections = [
       { href: "/admin/trade-ins", label: "Trade-Ins", icon: "Car" },
       { href: "/admin/sourcing", label: "Sourcing Cases", icon: "Target" },
       { href: "/admin/sourcing?view=exceptions", label: "Exceptions", icon: "AlertTriangle" },
+      { href: "/admin/messages-monitoring", label: "Messages Monitoring", icon: "MessageSquare" },
     ],
   },
   {
@@ -44,6 +45,7 @@ const navSections = [
       { href: "/admin/payments", label: "Payments", icon: "DollarSign" },
       { href: "/admin/payments?view=fees", label: "Concierge Fees", icon: "Receipt" },
       { href: "/admin/refunds", label: "Refunds", icon: "RefreshCcw" },
+      { href: "/admin/insurance", label: "Insurance", icon: "ShieldCheck" },
       { href: "/admin/payouts", label: "Affiliate Payouts", icon: "Wallet" },
       { href: "/admin/financial-reporting", label: "Reconciliation", icon: "BarChart3" },
     ],
@@ -55,9 +57,25 @@ const navSections = [
       { href: "/admin/external-preapprovals", label: "External Preapprovals", icon: "Landmark" },
       { href: "/admin/contracts", label: "Contract Shield", icon: "ShieldCheck" },
       { href: "/admin/contracts?view=contracts", label: "Contracts", icon: "FileSignature" },
+      { href: "/admin/contract-shield/rules", label: "Shield Rules", icon: "Shield" },
+      { href: "/admin/contract-shield/overrides", label: "Shield Overrides", icon: "ShieldAlert" },
+      { href: "/admin/manual-reviews", label: "Manual Reviews", icon: "ClipboardCheck" },
       { href: "/admin/documents", label: "Documents", icon: "FileCheck" },
       { href: "/admin/audit-logs", label: "Audit Logs", icon: "ScrollText" },
       { href: "/admin/compliance", label: "Risk", icon: "FileWarning" },
+    ],
+  },
+  {
+    label: "Inventory Intelligence",
+    items: [
+      { href: "/admin/inventory", label: "Vehicle Search", icon: "Search" },
+      { href: "/admin/dealer-intelligence", label: "Dealer Intelligence", icon: "Radar" },
+      { href: "/admin/inventory/sources", label: "Inventory Sources", icon: "Database" },
+      { href: "/admin/inventory/market", label: "Market Inventory", icon: "Globe" },
+      { href: "/admin/inventory/verified", label: "Verified Inventory", icon: "ShieldCheck" },
+      { href: "/admin/coverage-gaps", label: "Coverage Gaps", icon: "MapPin" },
+      { href: "/admin/dealer-invites", label: "Dealer Invites", icon: "Send" },
+      { href: "/admin/deal-protection", label: "Deal Protection", icon: "ShieldAlert" },
     ],
   },
   {
@@ -131,6 +149,13 @@ const iconMapKeys = [
   "Lock",
   "Shield",
   "Plug",
+  "MessageSquare",
+  "Database",
+  "Globe",
+  "MapPin",
+  "Send",
+  "ShieldAlert",
+  "ClipboardCheck",
 ]
 
 describe("Admin Layout", () => {
@@ -158,8 +183,8 @@ describe("Admin Layout", () => {
       expect(dashboardSection.items[0].label).toBe("Dashboard")
     })
 
-    it("should have exactly 6 grouped sections plus the Dashboard section", () => {
-      expect(navSections).toHaveLength(7)
+    it("should have exactly 7 grouped sections plus the Dashboard section", () => {
+      expect(navSections).toHaveLength(8)
     })
 
     it("should have the correct group labels in order", () => {
@@ -169,6 +194,7 @@ describe("Admin Layout", () => {
         "People",
         "Finance",
         "Compliance",
+        "Inventory Intelligence",
         "Intelligence",
         "System",
       ])
@@ -204,6 +230,52 @@ describe("Admin Layout", () => {
       const intel = navSections.find((s) => s.label === "Intelligence")!
       const sourcing = intel.items.find((i) => i.label === "Sourcing Analytics")
       expect(sourcing).toBeDefined()
+    })
+
+    it("should have Inventory Intelligence section with all inventory items", () => {
+      const invIntel = navSections.find((s) => s.label === "Inventory Intelligence")!
+      expect(invIntel).toBeDefined()
+      expect(invIntel.items.length).toBeGreaterThanOrEqual(8)
+      const labels = invIntel.items.map((i) => i.label)
+      expect(labels).toContain("Vehicle Search")
+      expect(labels).toContain("Dealer Intelligence")
+      expect(labels).toContain("Inventory Sources")
+      expect(labels).toContain("Market Inventory")
+      expect(labels).toContain("Verified Inventory")
+      expect(labels).toContain("Coverage Gaps")
+      expect(labels).toContain("Dealer Invites")
+      expect(labels).toContain("Deal Protection")
+    })
+
+    it("should have Messages Monitoring under Operations", () => {
+      const ops = navSections.find((s) => s.label === "Operations")!
+      const messages = ops.items.find((i) => i.label === "Messages Monitoring")
+      expect(messages).toBeDefined()
+      expect(messages!.href).toBe("/admin/messages-monitoring")
+    })
+
+    it("should have Insurance under Finance", () => {
+      const finance = navSections.find((s) => s.label === "Finance")!
+      const insurance = finance.items.find((i) => i.label === "Insurance")
+      expect(insurance).toBeDefined()
+      expect(insurance!.href).toBe("/admin/insurance")
+    })
+
+    it("should have Manual Reviews under Compliance", () => {
+      const compliance = navSections.find((s) => s.label === "Compliance")!
+      const manualReviews = compliance.items.find((i) => i.label === "Manual Reviews")
+      expect(manualReviews).toBeDefined()
+      expect(manualReviews!.href).toBe("/admin/manual-reviews")
+    })
+
+    it("should have Shield Rules and Shield Overrides under Compliance", () => {
+      const compliance = navSections.find((s) => s.label === "Compliance")!
+      const rules = compliance.items.find((i) => i.label === "Shield Rules")
+      const overrides = compliance.items.find((i) => i.label === "Shield Overrides")
+      expect(rules).toBeDefined()
+      expect(rules!.href).toBe("/admin/contract-shield/rules")
+      expect(overrides).toBeDefined()
+      expect(overrides!.href).toBe("/admin/contract-shield/overrides")
     })
   })
 
@@ -246,6 +318,18 @@ describe("Admin Layout", () => {
         "/admin/contracts",
         "/admin/reports",
         "/admin/ai",
+        "/admin/insurance",
+        "/admin/manual-reviews",
+        "/admin/contract-shield/rules",
+        "/admin/contract-shield/overrides",
+        "/admin/inventory",
+        "/admin/inventory/sources",
+        "/admin/inventory/market",
+        "/admin/inventory/verified",
+        "/admin/coverage-gaps",
+        "/admin/dealer-invites",
+        "/admin/deal-protection",
+        "/admin/messages-monitoring",
       ]
       const allHrefs = allNavItems.map((i) => i.href.split("?")[0])
       criticalRoutes.forEach((route) => {
@@ -285,6 +369,30 @@ describe("Admin Layout", () => {
       const clientPath = path.resolve("app/admin/layout-client.tsx")
       const clientContent = fs.readFileSync(clientPath, "utf-8")
       expect(clientContent).toContain("ChevronDown")
+    })
+  })
+
+  describe("Navigation route file existence", () => {
+    it("should have a page file for every nav item route", () => {
+      const missing: string[] = []
+      allNavItems.forEach((item) => {
+        const route = item.href.split("?")[0]
+        const pagePath = path.resolve(`app${route}/page.tsx`)
+        const pagePathTs = path.resolve(`app${route}/page.ts`)
+        if (!fs.existsSync(pagePath) && !fs.existsSync(pagePathTs)) {
+          missing.push(`${item.label} (${route})`)
+        }
+      })
+      expect(missing).toEqual([])
+    })
+
+    it("should have all new icons present in the layout-client iconMap", () => {
+      const clientPath = path.resolve("app/admin/layout-client.tsx")
+      const clientContent = fs.readFileSync(clientPath, "utf-8")
+      const newIcons = ["MessageSquare", "Database", "Globe", "MapPin", "Send", "ShieldAlert", "ClipboardCheck"]
+      newIcons.forEach((icon) => {
+        expect(clientContent).toContain(icon)
+      })
     })
   })
 })
