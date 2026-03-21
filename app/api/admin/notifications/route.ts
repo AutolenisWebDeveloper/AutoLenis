@@ -3,6 +3,8 @@ import { requireAuth } from "@/lib/auth-server"
 import { listNotifications, markAsRead } from "@/lib/notifications/notification.service"
 import type { NotificationPriority, NotificationCategory } from "@/lib/notifications/types"
 
+export const dynamic = "force-dynamic"
+
 export async function GET(request: Request) {
   try {
     const session = await requireAuth(["ADMIN", "SUPER_ADMIN"])
