@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth-server"
+import { isUserAffiliate } from "@/lib/authz/roles"
 import { createClient } from "@/lib/supabase/server"
 import { logger } from "@/lib/logger"
 
@@ -8,6 +9,10 @@ export async function GET(req: NextRequest) {
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    if (!isUserAffiliate(user)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     const supabase = await createClient()
