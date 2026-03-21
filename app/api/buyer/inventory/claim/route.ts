@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/lib/auth-server"
 import { createLead } from "@/lib/services/inventory-sourcing/lead.service"
+import { inventoryClaimSchema } from "@/lib/validators/buyer-mutations"
 
 export const dynamic = "force-dynamic"
 
@@ -13,22 +14,23 @@ export const dynamic = "force-dynamic"
 export async function POST(req: NextRequest) {
   try {
     const user = await getSessionUser()
-    if (!user) {
+    if (!user || user.role !== "BUYER") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const body = await req.json()
 
-    if (!body.listing_id) {
+    const parsed = inventoryClaimSchema.safeParse(body)
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: { code: "MISSING_LISTING_ID", message: "listing_id is required to claim a vehicle" } },
+        { error: { code: "VALIDATION_ERROR", message: parsed.error.errors[0]?.message || "listing_id is required to claim a vehicle" } },
         { status: 400 },
       )
     }
 
     const lead = await createLead(
       {
-        listing_id: body.listing_id,
+        listing_id: parsed.data.listing_id,
         canonical_vehicle_id: body.canonical_vehicle_id ?? null,
         buyer_user_id: user.userId,
         buyer_name: body.buyer_name ?? null,

@@ -32,6 +32,12 @@ import {
   FolderOpen,
   LayoutList,
   FileStack,
+  Tag,
+  CreditCard,
+  Wallet,
+  DollarSign,
+  User,
+  MessageSquare,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -61,6 +67,12 @@ const iconMap: Record<string, LucideIcon> = {
   FolderOpen,
   LayoutList,
   FileStack,
+  Tag,
+  CreditCard,
+  Wallet,
+  DollarSign,
+  User,
+  MessageSquare,
 }
 
 export interface NavSubItem {
