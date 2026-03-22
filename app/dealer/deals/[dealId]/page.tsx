@@ -11,12 +11,12 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export default function DealerDealDetailPage({ params }: { params: Promise<{ dealId: string }> }) {
   const { dealId } = use(params)
-  const { data, isLoading } = useSWR(`/api/admin/deals/${dealId}`, fetcher)
+  const { data, isLoading } = useSWR(`/api/dealer/deals/${dealId}`, fetcher)
 
   if (isLoading) return <div className="animate-pulse"><div className="h-96 bg-muted rounded" /></div>
   if (!data?.success) return <div className="flex flex-col items-center py-12"><AlertCircle className="h-12 w-12 text-destructive mb-4" /></div>
 
-  const deal = data.deal
+  const deal = data.data || data.deal
 
   return (
     <div className="space-y-6">
