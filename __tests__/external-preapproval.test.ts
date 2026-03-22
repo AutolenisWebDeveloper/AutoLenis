@@ -432,10 +432,12 @@ describe("External Pre-Approval - Auction Gating Contract", () => {
   it("should pass auction prerequisite check with valid non-expired preQualification", () => {
     // The auction service checks: preQualification exists AND expiresAt > now()
     // This must work for BOTH internal and external prequal flows
+    const futureDate = new Date()
+    futureDate.setFullYear(futureDate.getFullYear() + 1)
     const buyer = {
       preQualification: {
         id: "pq-1",
-        expiresAt: new Date("2026-03-22"),
+        expiresAt: futureDate,
         creditTier: "GOOD",
         maxOtd: 35000,
         source: "EXTERNAL_MANUAL",
