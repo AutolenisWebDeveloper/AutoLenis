@@ -23,6 +23,7 @@ import {
   FolderOpen,
   ChevronDown,
   ChevronRight,
+  Calculator,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -43,6 +44,7 @@ const iconMap: Record<string, LucideIcon> = {
   ImageIcon,
   Settings,
   FolderOpen,
+  Calculator,
 }
 
 export interface NavSubItem {
