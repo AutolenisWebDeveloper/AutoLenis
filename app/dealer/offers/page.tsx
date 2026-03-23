@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { PageHeader } from "@/components/dashboard/page-header"
 import { EmptyState } from "@/components/dashboard/empty-state"
 import { LoadingSkeleton } from "@/components/dashboard/loading-skeleton"
@@ -12,15 +13,26 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Gavel, Search, Car, DollarSign, ArrowRight, User } from "lucide-react"
 import Link from "next/link"
 import useSWR from "swr"
-// import { useSearchParams } from "next/navigation"
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export default function DealerOffersPage() {
-  // const _searchParams = useSearchParams()
+  const [search, setSearch] = useState("")
   const { data, error, isLoading, mutate } = useSWR("/api/dealer/offers", fetcher)
 
-  const offers = data?.offers || []
+  const allOffers = data?.offers || []
+  const offers = search
+    ? allOffers.filter((offer: any) => {
+        const vehicle = offer.auction?.inventoryItem
+        const s = search.toLowerCase()
+        return (
+          vehicle?.make?.toLowerCase().includes(s) ||
+          vehicle?.model?.toLowerCase().includes(s) ||
+          offer.status?.toLowerCase().includes(s) ||
+          offer.auction?.buyer?.profile?.firstName?.toLowerCase().includes(s)
+        )
+      })
+    : allOffers
   const pendingOffers = offers.filter((o: any) => o.status === "PENDING")
   const acceptedOffers = offers.filter((o: any) => o.status === "ACCEPTED" || o.status === "WON")
   const rejectedOffers = offers.filter((o: any) => o.status === "REJECTED" || o.status === "LOST")
@@ -36,7 +48,12 @@ export default function DealerOffersPage() {
       <div className="flex gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search offers..." className="pl-9" />
+          <Input
+            placeholder="Search offers..."
+            className="pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
       </div>
 
