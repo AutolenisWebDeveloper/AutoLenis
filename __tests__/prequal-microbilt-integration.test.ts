@@ -317,7 +317,8 @@ describe("PreQual Compliance — Consent UI", () => {
     const component = readSource("components/prequal/prequal-consent-form.tsx")
     expect(component).toContain("soft inquiry")
     expect(component).toContain("will NOT affect")
-    expect(component).toContain("not a guarantee of approval")
+    // Updated: language now reflects shopping-readiness framing, not lender approval
+    expect(component).toContain("not a financing decision")
   })
 
   it("consent form contains versioned consent text export", () => {
