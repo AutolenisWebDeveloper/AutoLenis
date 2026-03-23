@@ -37,8 +37,8 @@ export function validateAuthEnvironment(): AuthRuntimeCheck {
     errors.push("SUPABASE_SERVICE_ROLE_KEY is not set. Auth operations will fail.")
   }
 
-  if (!process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']) {
-    warnings.push("NEXT_PUBLIC_SUPABASE_ANON_KEY is not set. Client-side DB access may fail.")
+  if (!process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] && !process.env['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY']) {
+    warnings.push("Neither NEXT_PUBLIC_SUPABASE_ANON_KEY nor NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY is set. Client-side DB access may fail.")
   }
 
   // Important: App URL affects CORS and callbacks

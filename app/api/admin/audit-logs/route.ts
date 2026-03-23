@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { getSessionUser, isAdminRole } from "@/lib/auth-server"
 import { prisma } from "@/lib/prisma"
 
+export const dynamic = "force-dynamic"
+
 const ENTITY_TYPE_MAP: Record<string, string> = {
   LOGIN: "AUTH",
   LOGOUT: "AUTH",

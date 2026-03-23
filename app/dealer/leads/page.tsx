@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { PageHeader } from "@/components/dashboard/page-header"
 import { EmptyState } from "@/components/dashboard/empty-state"
 import { LoadingSkeleton } from "@/components/dashboard/loading-skeleton"
@@ -11,7 +12,6 @@ import { Input } from "@/components/ui/input"
 import { Users, Search, Car, MapPin, Calendar, ArrowRight, DollarSign } from "lucide-react"
 import Link from "next/link"
 import useSWR from "swr"
-// import { useSearchParams } from "next/navigation"
 import { Suspense } from "react"
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
@@ -19,10 +19,22 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json())
 const Loading = () => null;
 
 export default function DealerLeadsPage() {
-  // const _searchParams = useSearchParams();
+  const [search, setSearch] = useState("")
   const { data, error, isLoading, mutate } = useSWR("/api/dealer/auctions", fetcher)
 
   const leads = data?.auctions || []
+  const filteredLeads = search
+    ? leads.filter((lead: any) => {
+        const vehicle = lead.inventoryItem
+        const s = search.toLowerCase()
+        return (
+          vehicle?.make?.toLowerCase().includes(s) ||
+          vehicle?.model?.toLowerCase().includes(s) ||
+          lead.buyer?.zipCode?.toLowerCase().includes(s) ||
+          lead.status?.toLowerCase().includes(s)
+        )
+      })
+    : leads
 
   return (
     <Suspense fallback={<Loading />}>
@@ -36,7 +48,12 @@ export default function DealerLeadsPage() {
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search leads..." className="pl-9" />
+            <Input
+              placeholder="Search leads..."
+              className="pl-9"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
         </div>
 
@@ -45,7 +62,7 @@ export default function DealerLeadsPage() {
           <LoadingSkeleton variant="cards" count={3} />
         ) : error ? (
           <ErrorState message="Failed to load leads" onRetry={() => mutate()} />
-        ) : leads.length === 0 ? (
+        ) : filteredLeads.length === 0 ? (
           <EmptyState
             icon={<Users className="h-8 w-8 text-muted-foreground" />}
             title="No active leads"
@@ -54,7 +71,7 @@ export default function DealerLeadsPage() {
           />
         ) : (
           <div className="grid gap-4">
-            {leads.map((lead: any) => {
+            {filteredLeads.map((lead: any) => {
               const vehicle = lead.inventoryItem
               return (
                 <Card key={lead.id} className="hover:shadow-md transition-shadow">

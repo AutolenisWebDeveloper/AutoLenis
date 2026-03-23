@@ -40,6 +40,7 @@ function mapAuctionStatusToUi(status: string): string {
 }
 
 export async function GET(request: Request) {
+  try {
   const user = await getSessionUser()
   if (!user || !isAdminRole(user.role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -144,4 +145,8 @@ export async function GET(request: Request) {
         })
 
   return NextResponse.json({ success: true, requests: filtered })
+  } catch (error) {
+    console.error("[AdminRequests] Error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
 }

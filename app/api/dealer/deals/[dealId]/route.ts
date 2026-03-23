@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function GET(_request: Request, { params }: { params: Promise<{ dealId: string }> }) {
   try {
-    const session = await requireAuth(["DEALER_USER"])
+    const session = await requireAuth(["DEALER", "DEALER_USER"])
     const { dealId } = await params
 
     const supabase = await createClient()

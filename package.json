@@ -18,8 +18,19 @@
     "db:setup": "bun run scripts/setup-database.mjs",
     "db:studio": "PRISMA_HIDE_UPDATE_MESSAGE=1 prisma studio",
     "dev": "PRISMA_HIDE_UPDATE_MESSAGE=1 next dev",
+    "supabase": "supabase",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:status": "supabase status",
+    "supabase:db:push": "supabase db push",
+    "supabase:db:reset": "supabase db reset",
+    "supabase:db:diff": "supabase db diff",
+    "supabase:migration:new": "supabase migration new",
+    "supabase:link": "supabase link",
+    "supabase:functions:deploy": "supabase functions deploy",
     "postinstall": "node scripts/postinstall.js",
     "lint": "eslint . --no-error-on-unmatched-pattern",
+    "lint:strict": "eslint . --no-error-on-unmatched-pattern --max-warnings 0",
     "lint:changed": "pnpm -s lint",
     "start": "next start",
     "test": "vitest",
@@ -29,6 +40,7 @@
     "test:ui": "vitest --ui",
     "test:unit": "vitest run --reporter=verbose",
     "test:links": "playwright test e2e/link-checker.spec.ts --project=chromium",
+    "check:architecture": "npx tsx scripts/governance/check-architecture.ts",
     "check:links": "node scripts/crawl-and-report.mjs",
     "typecheck": "tsc --noEmit"
   },
@@ -143,9 +155,11 @@
     "prettier": "^3.8.1",
     "prisma": "6.16.0",
     "puppeteer-core": "latest",
+    "supabase": "2.82.0",
     "tailwindcss": "^4.1.9",
     "tw-animate-css": "1.3.3",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.0",
     "vite": "latest",
     "vitest": "4.0.16"
   },
@@ -157,6 +171,7 @@
       "esbuild",
       "prisma",
       "sharp",
+      "supabase",
       "unrs-resolver"
     ]
   }

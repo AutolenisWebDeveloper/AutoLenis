@@ -51,6 +51,13 @@ import {
   Shield,
   Plug,
   ChevronDown,
+  MessageSquare,
+  Database,
+  Globe,
+  MapPin,
+  Send,
+  ShieldAlert,
+  ClipboardCheck,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { Suspense } from "react"
@@ -102,6 +109,13 @@ const iconMap: Record<string, LucideIcon> = {
   Lock,
   Shield,
   Plug,
+  MessageSquare,
+  Database,
+  Globe,
+  MapPin,
+  Send,
+  ShieldAlert,
+  ClipboardCheck,
 }
 
 export interface AdminNavItem {

@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth-server"
+import { isUserAffiliate } from "@/lib/authz/roles"
 import { createClient } from "@/lib/supabase/server"
 import { isTestWorkspace } from "@/lib/app-mode"
 import { mockDb } from "@/lib/mocks/mockStore"
@@ -10,6 +11,10 @@ export async function GET(req: NextRequest) {
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    if (!isUserAffiliate(user)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     // TEST workspace: return deterministic mock payout history + balances.
@@ -100,6 +105,10 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    if (!isUserAffiliate(user)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     if (isTestWorkspace(user as any)) {

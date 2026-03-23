@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
 
     // Fire emails asynchronously (best-effort, do not block response)
     const correlationId = randomUUID()
-    Promise.allSettled([
+    void Promise.allSettled([
       // Admin dashboard notification
       emailService.sendDealerApplicationSubmittedNotification(
         body.dealershipName,

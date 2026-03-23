@@ -3,6 +3,7 @@ import { getSupabase } from "@/lib/db"
 import { rateLimit, rateLimits } from "@/lib/middleware/rate-limit"
 
 export async function GET(req: NextRequest) {
+  try {
   // Rate limit: 100 requests per minute per IP to prevent scraping
   const rateLimitResponse = await rateLimit(req, rateLimits.api)
   if (rateLimitResponse) return rateLimitResponse
@@ -79,4 +80,8 @@ export async function GET(req: NextRequest) {
     limit,
     offset,
   })
+  } catch (error) {
+    console.error("[InventorySearch] Error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
 }

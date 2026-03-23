@@ -4,7 +4,8 @@ const envSchema = z.object({
   // Supabase (Required)
   NEXT_PUBLIC_SUPABASE_URL: z.string().url("NEXT_PUBLIC_SUPABASE_URL must be a valid URL"),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, "SUPABASE_SERVICE_ROLE_KEY is required"),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1, "NEXT_PUBLIC_SUPABASE_ANON_KEY is required"),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1, "NEXT_PUBLIC_SUPABASE_ANON_KEY must be non-empty if set").optional(),
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY: z.string().min(1).optional(),
 
   // Authentication (Required)
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
@@ -65,7 +66,13 @@ const envSchema = z.object({
   ADMIN_NOTIFICATION_EMAIL: z.string().email().optional(),
   INTERNAL_API_KEY: z.string().optional(),
   DEV_EMAIL_TO: z.string().email("DEV_EMAIL_TO must be a valid email when set").optional(),
-})
+}).refine(
+  (data) => data.NEXT_PUBLIC_SUPABASE_ANON_KEY || data.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY,
+  {
+    message: "Either NEXT_PUBLIC_SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY must be set",
+    path: ["NEXT_PUBLIC_SUPABASE_ANON_KEY"],
+  },
+)
 
 // Validate environment variables
 const parseEnv = () => {
