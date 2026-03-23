@@ -59,8 +59,7 @@ export function SignInForm() {
       setResendCooldown(RESEND_COOLDOWN_SECONDS)
     } catch (err) {
       console.error("[SignInForm] Resend verification error:", err)
-      setResendMessage("If that email exists, we sent a new verification link.")
-      setResendCooldown(RESEND_COOLDOWN_SECONDS)
+      setResendMessage("Unable to send verification email. Please check your connection and try again.")
     } finally {
       setResendLoading(false)
     }
@@ -172,7 +171,7 @@ export function SignInForm() {
               <div className="mt-2">
                 {verificationEmailSent && (
                   <p className="mb-2 text-green-700 text-xs font-medium">
-                    Verification link sent. Check your email.
+                    A verification link was sent to your email. Check your inbox and spam folder.
                   </p>
                 )}
                 <Button
@@ -199,7 +198,7 @@ export function SignInForm() {
               </div>
             )}
             {resendMessage && (
-              <p className="mt-2 text-green-700 text-xs">{resendMessage}</p>
+              <p className={`mt-2 text-xs ${resendMessage.startsWith("Unable") ? "text-red-600" : "text-green-700"}`}>{resendMessage}</p>
             )}
           </div>
         )}
