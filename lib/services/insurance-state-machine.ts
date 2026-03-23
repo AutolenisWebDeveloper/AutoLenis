@@ -10,6 +10,11 @@
  *
  * Insurance does NOT block shopping, shortlist, auction, or deal selection.
  * Insurance ONLY blocks final delivery release and pickup handoff.
+ *
+ * Storage: Uses the existing `insurance_status` column on SelectedDeal.
+ * New InsuranceFlowStatus values are stored directly in this field.
+ * Legacy values (NOT_SELECTED, SELECTED_AUTOLENIS, BOUND, etc.) are
+ * mapped to the canonical InsuranceFlowStatus enum on read.
  */
 
 import { prisma } from "@/lib/db"
@@ -32,6 +37,8 @@ import crypto from "node:crypto"
 export class InsuranceStateMachineService {
   /**
    * Get current insurance flow status for a deal.
+   * Reads from the existing `insurance_status` column and maps legacy values
+   * to the canonical InsuranceFlowStatus enum.
    * Returns NOT_STARTED if no insurance record exists.
    */
   async getInsuranceFlowStatus(dealId: string): Promise<{
@@ -45,11 +52,6 @@ export class InsuranceStateMachineService {
       where: { id: dealId },
       select: {
         insurance_status: true,
-        insurance_flow_status: true,
-        insurance_upload_metadata: true,
-        insurance_delivery_block: true,
-        insurance_reviewed_by: true,
-        insurance_reviewed_at: true,
       },
     })
 
@@ -57,22 +59,27 @@ export class InsuranceStateMachineService {
       throw new Error("Deal not found")
     }
 
-    // Use the new flow status field if available, fall back to mapping from legacy
-    const flowStatus = (deal.insurance_flow_status as InsuranceFlowStatus) ||
-      this.mapLegacyStatus(deal.insurance_status as string | null)
+    // Map the stored value (may be legacy or new enum) to InsuranceFlowStatus
+    const flowStatus = this.resolveFlowStatus(deal.insurance_status as string | null)
+
+    // Derive delivery block from status (REQUIRED_BEFORE_DELIVERY = blocked)
+    const deliveryBlockFlag = flowStatus === InsuranceFlowStatus.REQUIRED_BEFORE_DELIVERY
 
     return {
       status: flowStatus,
-      uploadMetadata: deal.insurance_upload_metadata as InsuranceUploadMetadata | null,
-      deliveryBlockFlag: deal.insurance_delivery_block === true,
-      reviewedBy: deal.insurance_reviewed_by as string | null,
-      reviewedAt: deal.insurance_reviewed_at ? String(deal.insurance_reviewed_at) : null,
+      // Upload metadata, review audit fields require future DB migration.
+      // For now, these are derived from status or returned as null.
+      uploadMetadata: null,
+      deliveryBlockFlag,
+      reviewedBy: null,
+      reviewedAt: null,
     }
   }
 
   /**
    * Transition insurance status for a deal.
    * Validates the transition is valid per the state machine.
+   * Stores the new InsuranceFlowStatus value in the `insurance_status` column.
    */
   async transitionStatus(
     dealId: string,
@@ -97,36 +104,13 @@ export class InsuranceStateMachineService {
       )
     }
 
-    // Build update data
-    const updateData: Record<string, unknown> = {
-      insurance_flow_status: newStatus,
-      updatedAt: new Date(),
-    }
-
-    // Handle delivery block flag
-    if (newStatus === "REQUIRED_BEFORE_DELIVERY") {
-      updateData.insurance_delivery_block = true
-    } else if (newStatus === "VERIFIED") {
-      updateData.insurance_delivery_block = false
-    }
-
-    // Handle review metadata
-    if (newStatus === "VERIFIED" || newStatus === "UNDER_REVIEW") {
-      if (actorType === "ADMIN") {
-        updateData.insurance_reviewed_by = actorId
-        updateData.insurance_reviewed_at = new Date()
-      }
-    }
-
-    // Handle upload metadata
-    if (metadata?.uploadMetadata) {
-      updateData.insurance_upload_metadata = metadata.uploadMetadata as unknown as string
-    }
-
-    // Update deal
+    // Store new InsuranceFlowStatus directly in the insurance_status column
     await prisma.selectedDeal.update({
       where: { id: dealId },
-      data: updateData,
+      data: {
+        insurance_status: newStatus,
+        updatedAt: new Date(),
+      },
     })
 
     // Emit event (non-blocking)
@@ -249,6 +233,26 @@ export class InsuranceStateMachineService {
       insuranceStatus: status,
       reason: ready ? undefined : `Insurance status "${status}" does not satisfy delivery requirements. Insurance must be VERIFIED.`,
     }
+  }
+
+  /**
+   * Resolve the stored insurance_status value to a canonical InsuranceFlowStatus.
+   *
+   * If the value is already a valid InsuranceFlowStatus enum member, return it directly.
+   * Otherwise, map legacy values (NOT_SELECTED, SELECTED_AUTOLENIS, BOUND, etc.)
+   * to their canonical equivalents.
+   */
+  private resolveFlowStatus(storedStatus: string | null): InsuranceFlowStatus {
+    if (!storedStatus) return InsuranceFlowStatus.NOT_STARTED
+
+    // Check if the stored value is already a canonical InsuranceFlowStatus
+    const canonicalValues: string[] = Object.values(InsuranceFlowStatus)
+    if (canonicalValues.includes(storedStatus)) {
+      return storedStatus as InsuranceFlowStatus
+    }
+
+    // Map legacy values
+    return this.mapLegacyStatus(storedStatus)
   }
 
   /**

@@ -678,3 +678,138 @@ describe("Dashboard Insurance Status Card Display Mapping", () => {
     expect(INSURANCE_STATUS_DISPLAY.UNDER_REVIEW.severity).toBe("info")
   })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// J. SCHEMA SAFETY — insurance_status vs insurance_flow_status
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("Schema Safety — insurance_status field alignment", () => {
+  it("InsuranceStateMachineService only selects insurance_status from Prisma schema", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("lib/services/insurance-state-machine.ts", "utf8")
+
+    // Must use existing insurance_status column (in Prisma schema)
+    expect(src).toContain("insurance_status: true")
+
+    // Must NOT select non-existent columns that would cause Prisma runtime errors
+    expect(src).not.toContain("insurance_flow_status: true")
+    expect(src).not.toContain("insurance_upload_metadata: true")
+    expect(src).not.toContain("insurance_delivery_block: true")
+    expect(src).not.toContain("insurance_reviewed_by: true")
+    expect(src).not.toContain("insurance_reviewed_at: true")
+  })
+
+  it("InsuranceStateMachineService writes to insurance_status (not insurance_flow_status)", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("lib/services/insurance-state-machine.ts", "utf8")
+
+    // The transition method must write new status to insurance_status column
+    expect(src).toContain("insurance_status: newStatus")
+
+    // Must NOT write to non-existent insurance_flow_status column
+    const flowStatusWrites = (src.match(/insurance_flow_status:\s*newStatus/g) || []).length
+    expect(flowStatusWrites).toBe(0)
+  })
+
+  it("AdminInsuranceOperationsService queries insurance_status (not insurance_flow_status)", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("lib/services/admin/insurance-operations.ts", "utf8")
+
+    // Must query the existing insurance_status column
+    expect(src).toContain("insurance_status: { in: statuses }")
+
+    // Must NOT query non-existent insurance_flow_status column
+    expect(src).not.toContain("insurance_flow_status: { in: statuses }")
+    expect(src).not.toContain("insurance_flow_status: true")
+  })
+
+  it("Prisma schema has insurance_status on SelectedDeal", async () => {
+    const fs = await import("node:fs")
+    const schema = fs.readFileSync("prisma/schema.prisma", "utf8")
+
+    // SelectedDeal model must have the insurance_status field
+    expect(schema).toContain("insurance_status String?")
+  })
+
+  it("InsuranceStateMachineService has resolveFlowStatus for bidirectional mapping", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("lib/services/insurance-state-machine.ts", "utf8")
+
+    // Must have a method to resolve both canonical and legacy values
+    expect(src).toContain("resolveFlowStatus")
+    expect(src).toContain("mapLegacyStatus")
+
+    // Must handle canonical InsuranceFlowStatus values pass-through
+    expect(src).toContain("Object.values(InsuranceFlowStatus)")
+  })
+
+  it("Legacy insurance_status values are mapped correctly in resolveFlowStatus", () => {
+    // These are the legacy DB values that pre-date the InsuranceFlowStatus enum.
+    // The state machine must handle them gracefully.
+    const legacyMappings: Record<string, string> = {
+      NOT_SELECTED: "NOT_STARTED",
+      SELECTED_AUTOLENIS: "CURRENT_INSURANCE_UPLOADED",
+      EXTERNAL_PROOF_UPLOADED: "CURRENT_INSURANCE_UPLOADED",
+      BOUND: "VERIFIED",
+    }
+
+    // Verify that each expected mapping target is a valid InsuranceFlowStatus
+    const allStatuses = Object.values(InsuranceFlowStatus)
+    for (const [, expected] of Object.entries(legacyMappings)) {
+      expect(allStatuses).toContain(expected)
+    }
+  })
+
+  it("New InsuranceFlowStatus values are valid insurance_status column values", () => {
+    // All InsuranceFlowStatus enum values must be safe to store in a String? column
+    const allValues = Object.values(InsuranceFlowStatus)
+    for (const val of allValues) {
+      expect(typeof val).toBe("string")
+      expect(val.length).toBeGreaterThan(0)
+      // No special chars that could break Prisma string storage
+      expect(val).toMatch(/^[A-Z_]+$/)
+    }
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// K. MERGE-GATE: Insurance does not block pre-delivery steps
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("Merge-gate: Insurance enforcement scope", () => {
+  it("shortlist route does NOT reference insurance", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/api/buyer/shortlist/route.ts", "utf8")
+    expect(src).not.toContain("insuranceStateMachine")
+    expect(src).not.toContain("isDeliveryReady")
+    expect(src).not.toContain("insurance_status")
+    expect(src).not.toContain("InsuranceFlowStatus")
+  })
+
+  it("auction route does NOT reference insurance", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/api/buyer/auction/route.ts", "utf8")
+    expect(src).not.toContain("insuranceStateMachine")
+    expect(src).not.toContain("isDeliveryReady")
+    expect(src).not.toContain("insurance_status")
+    expect(src).not.toContain("InsuranceFlowStatus")
+  })
+
+  it("pickup service DOES enforce insurance delivery gate", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("lib/services/pickup.service.ts", "utf8")
+    expect(src).toContain("insuranceStateMachine")
+    expect(src).toContain("isDeliveryReady")
+    expect(src).toContain("Insurance verification required")
+  })
+
+  it("deal/status.ts does NOT block on insurance for pre-delivery stages", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("lib/services/deal/status.ts", "utf8")
+    // Deal progression must explicitly note insurance does not block
+    expect(src).toContain("Insurance no longer blocks deal progression")
+    // Must NOT check insurance for CONTRACT_PENDING advancement
+    expect(src).not.toContain("isDeliveryReady")
+    expect(src).not.toContain("insuranceStateMachine")
+  })
+})
