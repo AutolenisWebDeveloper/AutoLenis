@@ -89,7 +89,7 @@ export default function ManualPreApprovalPage() {
         setStep("success")
         toast({
           title: "Pre-approval submitted",
-          description: "Your bank pre-approval has been submitted for admin review.",
+          description: "Your preapproval has been submitted for admin review.",
         })
       } else {
         throw new Error(extractApiError(data.error, "Submission failed"))
@@ -114,7 +114,7 @@ export default function ManualPreApprovalPage() {
               <CheckCircle2 className="h-16 w-16 mx-auto text-green-600" />
               <h2 className="text-2xl font-bold">Submission Received</h2>
               <p className="text-muted-foreground max-w-md mx-auto">
-                Your bank pre-approval from <strong>{lenderName}</strong> has been submitted.
+                Your preapproval from <strong>{lenderName}</strong> has been submitted.
                 An admin will review it shortly.
               </p>
               <div className="flex gap-3 justify-center pt-4">
@@ -141,9 +141,9 @@ export default function ManualPreApprovalPage() {
             Back
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">Upload Bank Pre-Approval</h1>
+            <h1 className="text-2xl font-bold">Upload External Preapproval</h1>
             <p className="text-muted-foreground text-sm">
-              Already have a pre-approval from your bank or lender? Submit it here for verification.
+              Already have a preapproval from your financial institution? Submit it here for verification.
             </p>
           </div>
         </div>
@@ -153,14 +153,14 @@ export default function ManualPreApprovalPage() {
             <CardHeader>
               <CardTitle className="text-lg">Pre-Approval Details</CardTitle>
               <CardDescription>
-                Enter the details from your lender pre-approval letter.
+                Enter the details from your preapproval letter or document.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div>
                   <label htmlFor="lenderName" className="text-sm font-medium">
-                    Lender Name <span className="text-destructive">*</span>
+                    Institution Name <span className="text-destructive">*</span>
                   </label>
                   <input
                     id="lenderName"
@@ -303,7 +303,7 @@ export default function ManualPreApprovalPage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Lender</span>
+                  <span className="text-muted-foreground">Institution</span>
                   <p className="font-medium">{lenderName}</p>
                 </div>
                 <div>
@@ -353,7 +353,7 @@ export default function ManualPreApprovalPage() {
                 <AlertCircle className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
                 <span className="text-muted-foreground">
                   Your submission will be reviewed by an admin. You will receive an email when a decision is made.
-                  This is an informational tool only; it does not guarantee financing or approval terms.
+                  This is an informational tool only; it does not constitute a financing decision or guarantee approval terms.
                 </span>
               </div>
               <div className="flex gap-3 pt-2">
