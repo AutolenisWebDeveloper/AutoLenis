@@ -25,6 +25,13 @@ import { PrequalStatus, computeEligibilityGates } from "@/lib/types/buyer-eligib
 
 const PREQUAL_EXPIRY_DAYS = 30
 
+/**
+ * Default loan term assumption (months) used to approximate vehicle price
+ * from a monthly payment amount. This is an intentional simplification —
+ * actual financing terms are determined later in the deal flow.
+ */
+const ESTIMATED_LOAN_TERM_MONTHS = 60
+
 // ---------------------------------------------------------------------------
 // Buyer Eligibility Service
 // ---------------------------------------------------------------------------
@@ -49,7 +56,7 @@ export class BuyerEligibilityService {
     // shoppingRangeLow: estimated minimum vehicle price (derived from monthly payment minimum × 60 months)
     // shoppingRangeHigh: maximum OTD budget cap in cents
     const shoppingRangeLow = prequal?.minMonthlyPaymentCents
-      ? prequal.minMonthlyPaymentCents * 60  // Approximate vehicle price from monthly min × 60 months
+      ? prequal.minMonthlyPaymentCents * ESTIMATED_LOAN_TERM_MONTHS
       : null
     const shoppingRangeHigh = prequal?.maxOtdAmountCents ?? null
     const vehicleBudgetCap = prequal?.maxOtdAmountCents ?? null

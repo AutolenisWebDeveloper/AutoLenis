@@ -384,6 +384,12 @@ export class PickupService {
 
     // Insurance delivery gate: verify insurance before final release
     const appointmentDealId = appointment.selected_deal_id || appointment.dealId
+    if (!appointmentDealId) {
+      console.warn("[pickup] completePickup: no deal ID on appointment — insurance gate skipped", {
+        appointmentId,
+        dealerUserId,
+      })
+    }
     if (appointmentDealId) {
       const insuranceCheck = await insuranceStateMachine.isDeliveryReady(appointmentDealId)
       if (!insuranceCheck.ready) {
