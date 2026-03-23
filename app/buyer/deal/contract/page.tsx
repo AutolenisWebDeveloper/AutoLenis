@@ -37,7 +37,7 @@ export default function DealContractPage() {
       <div className="space-y-6">
         <PageHeader
           title="Contract Shield Review"
-          subtitle={deal ? "Review contract status for your deal" : "Contract review for your deal"}
+          subtitle="Review contract status for your deal"
         />
 
         {isLoading ? (
