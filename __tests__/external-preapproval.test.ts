@@ -239,7 +239,7 @@ describe("External Pre-Approval - PreQualification Mapping", () => {
         maxOtd: 35000,
         estimatedMonthlyMin: 330,
         estimatedMonthlyMax: 660,
-        expiresAt: new Date("2026-03-22"),
+        expiresAt: new Date("2099-12-31"),
         providerName: "External Verified: Chase Bank",
         externalSubmissionId: "sub-123",
         // FULL EQUIVALENCE fields — must match internal prequal
@@ -435,7 +435,7 @@ describe("External Pre-Approval - Auction Gating Contract", () => {
     const buyer = {
       preQualification: {
         id: "pq-1",
-        expiresAt: new Date("2026-03-22"),
+        expiresAt: new Date("2099-12-31"),
         creditTier: "GOOD",
         maxOtd: 35000,
         source: "EXTERNAL_MANUAL",
