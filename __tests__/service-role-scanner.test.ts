@@ -164,6 +164,7 @@ describe("Service-Role Scanner", () => {
       "app/api/dealer/payments/route.ts",
       "app/api/dealer/payments/checkout/route.ts",
       "app/api/dealer/inventory/route.ts",
+      "app/api/dealer/inventory/[id]/route.ts",
       "app/api/dealer/inventory/bulk-upload/route.ts",
       "app/api/dealer/inventory/url-import/route.ts",
       "app/api/dealer/inventory/import-history/route.ts",

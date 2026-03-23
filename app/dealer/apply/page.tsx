@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, Loader2 } from "lucide-react"
 import { csrfHeaders } from "@/lib/csrf-client"
+import { useToast } from "@/hooks/use-toast"
 
 /**
  * /dealer/apply — Authenticated dealer onboarding continuation route.
@@ -31,6 +32,7 @@ export default function DealerApplyPage() {
 function DealerApplyContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { toast } = useToast()
   const prospectId = searchParams.get("prospectId")
 
   const [loading, setLoading] = useState(true)
@@ -73,9 +75,14 @@ function DealerApplyContent() {
     setSubmitting(true)
     try {
       const res = await fetch("/api/dealer/onboarding/upload-docs", { method: "POST", headers: csrfHeaders() })
-      if (res.ok) setStep("agreement")
+      if (res.ok) {
+        setStep("agreement")
+      } else {
+        const data = await res.json().catch(() => ({}))
+        toast({ variant: "destructive", title: "Upload failed", description: data.error || "Please try again." })
+      }
     } catch {
-      // handle error
+      toast({ variant: "destructive", title: "Upload failed", description: "A network error occurred. Please try again." })
     } finally {
       setSubmitting(false)
     }
@@ -85,21 +92,23 @@ function DealerApplyContent() {
     setSubmitting(true)
     try {
       const res = await fetch("/api/dealer/onboarding/accept-agreement", { method: "POST", headers: csrfHeaders() })
-      if (res.ok) setStep("setup")
+      if (res.ok) {
+        setStep("setup")
+      } else {
+        const data = await res.json().catch(() => ({}))
+        toast({ variant: "destructive", title: "Agreement failed", description: data.error || "Please try again." })
+      }
     } catch {
-      // handle error
+      toast({ variant: "destructive", title: "Agreement failed", description: "A network error occurred. Please try again." })
     } finally {
       setSubmitting(false)
     }
   }
 
-  async function handleCompleteSetup() {
+  function handleCompleteSetup() {
     setSubmitting(true)
-    try {
-      setStep("complete")
-    } finally {
-      setSubmitting(false)
-    }
+    setStep("complete")
+    setSubmitting(false)
   }
 
   if (loading) {

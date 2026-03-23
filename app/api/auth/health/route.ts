@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic"
  * Protected: requires admin auth or internal API key — never publicly accessible.
  */
 export async function GET(request: NextRequest) {
+  try {
   // Require admin auth or internal API key
   const internalKey = process.env["INTERNAL_API_KEY"]
   const authHeader = request.headers.get("x-internal-key")
@@ -87,6 +88,10 @@ export async function GET(request: NextRequest) {
   const statusCode = envCheck.isValid ? 200 : 503
 
   return NextResponse.json(response, { status: statusCode })
+  } catch (error) {
+    console.error("[AuthHealth] Error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
 }
 
 function getExpectedBehavior(hostname: string): string {

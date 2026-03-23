@@ -24,6 +24,7 @@ function mapAuctionStatusToUi(status: string): string {
 }
 
 export async function GET(_request: Request, { params }: { params: Promise<{ requestId: string }> }) {
+  try {
   const user = await getSessionUser()
   if (!user || !isAdminRole(user.role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -120,6 +121,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ req
       auctionId: (auction as any).id,
     },
   })
+  } catch (error) {
+    console.error("[AdminRequest GET] Error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
 }
 
 /**
@@ -128,48 +133,53 @@ export async function GET(_request: Request, { params }: { params: Promise<{ req
  * This is admin-only.
  */
 export async function PATCH(request: Request, { params }: { params: Promise<{ requestId: string }> }) {
-  const user = await getSessionUser()
-  if (!user || !isAdminRole(user.role)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  try {
+    const user = await getSessionUser()
+    if (!user || !isAdminRole(user.role)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { requestId } = await params
+
+    const dbCheck = requireDatabase()
+    if (dbCheck) return dbCheck
+
+    const body = await request.json().catch(() => ({}))
+    const durationHours = Math.min(168, Math.max(1, Number(body?.durationHours ?? 72)))
+
+    const startsAt = new Date()
+    const endsAt = new Date(startsAt.getTime() + durationHours * 60 * 60 * 1000)
+
+    const { data: existing, error: loadErr } = await supabase
+      .from("Auction")
+      .select("id,status")
+      .eq("id", requestId)
+      .maybeSingle()
+
+    if (loadErr) return NextResponse.json({ error: "Failed to load request" }, { status: 500 })
+    if (!existing) return NextResponse.json({ error: "Request not found" }, { status: 404 })
+
+    // Only activate if not already terminal
+    if (["CANCELLED", "COMPLETED"].includes((existing as any).status)) {
+      return NextResponse.json({ error: "Cannot activate a terminal request" }, { status: 409 })
+    }
+
+    const { error: updateErr } = await supabase
+      .from("Auction")
+      .update({
+        status: "ACTIVE",
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+      })
+      .eq("id", requestId)
+
+    if (updateErr) {
+      return NextResponse.json({ error: "Failed to activate request" }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("[AdminRequest PATCH] Error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
-
-  const { requestId } = await params
-
-  const dbCheck = requireDatabase()
-  if (dbCheck) return dbCheck
-
-  const body = await request.json().catch(() => ({}))
-  const durationHours = Math.min(168, Math.max(1, Number(body?.durationHours ?? 72)))
-
-  const startsAt = new Date()
-  const endsAt = new Date(startsAt.getTime() + durationHours * 60 * 60 * 1000)
-
-  const { data: existing, error: loadErr } = await supabase
-    .from("Auction")
-    .select("id,status")
-    .eq("id", requestId)
-    .maybeSingle()
-
-  if (loadErr) return NextResponse.json({ error: "Failed to load request" }, { status: 500 })
-  if (!existing) return NextResponse.json({ error: "Request not found" }, { status: 404 })
-
-  // Only activate if not already terminal
-  if (["CANCELLED", "COMPLETED"].includes((existing as any).status)) {
-    return NextResponse.json({ error: "Cannot activate a terminal request" }, { status: 409 })
-  }
-
-  const { error: updateErr } = await supabase
-    .from("Auction")
-    .update({
-      status: "ACTIVE",
-      startsAt: startsAt.toISOString(),
-      endsAt: endsAt.toISOString(),
-    })
-    .eq("id", requestId)
-
-  if (updateErr) {
-    return NextResponse.json({ error: "Failed to activate request" }, { status: 500 })
-  }
-
-  return NextResponse.json({ success: true })
 }

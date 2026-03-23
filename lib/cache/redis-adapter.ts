@@ -138,7 +138,7 @@ export class RedisCacheAdapter implements CacheAdapter {
   private ready = false
 
   constructor(redisUrl: string) {
-    this.init(redisUrl)
+    void this.init(redisUrl)
   }
 
   private async init(redisUrl: string): Promise<void> {
