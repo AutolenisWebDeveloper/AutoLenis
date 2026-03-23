@@ -27,6 +27,7 @@ import {
   Crown,
   Star,
   Loader2,
+  Shield,
 } from "lucide-react"
 import useSWR from "swr"
 import { useUser } from "@/hooks/use-user"
@@ -89,6 +90,7 @@ interface DashboardData {
     premium_fee_remaining_cents?: number
     premium_fee_status?: string
   } | null
+  insuranceStatus?: string | null
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -233,6 +235,125 @@ function getNextAction(data: DashboardData | undefined): NextActionResult {
     }
   }
   return null
+}
+
+// ── Insurance Status Display ─────────────────────────────────────────────────
+
+type InsuranceDisplayConfig = {
+  label: string
+  ctaLabel: string
+  ctaHref: string
+  severity: "info" | "warning" | "success" | "error"
+  accentColor: string
+}
+
+const INSURANCE_CARD_DISPLAY: Record<string, InsuranceDisplayConfig> = {
+  NOT_STARTED: {
+    label: "Not Started",
+    ctaLabel: "Upload Current Insurance",
+    ctaHref: "/buyer/insurance",
+    severity: "info",
+    accentColor: "#64748b",
+  },
+  CURRENT_INSURANCE_UPLOADED: {
+    label: "Submitted for Review",
+    ctaLabel: "View Upload",
+    ctaHref: "/buyer/insurance",
+    severity: "info",
+    accentColor: "#0066FF",
+  },
+  INSURANCE_PENDING: {
+    label: "Proof Required Before Delivery",
+    ctaLabel: "Upload Insurance",
+    ctaHref: "/buyer/insurance",
+    severity: "warning",
+    accentColor: "#F59E0B",
+  },
+  HELP_REQUESTED: {
+    label: "Assistance Requested",
+    ctaLabel: "We'll Contact You",
+    ctaHref: "/buyer/insurance",
+    severity: "info",
+    accentColor: "#0066FF",
+  },
+  UNDER_REVIEW: {
+    label: "Under Review",
+    ctaLabel: "Pending Review",
+    ctaHref: "/buyer/insurance",
+    severity: "info",
+    accentColor: "#0066FF",
+  },
+  VERIFIED: {
+    label: "Verified",
+    ctaLabel: "View Details",
+    ctaHref: "/buyer/insurance",
+    severity: "success",
+    accentColor: "#7ED321",
+  },
+  REQUIRED_BEFORE_DELIVERY: {
+    label: "Required Before Delivery",
+    ctaLabel: "Upload Insurance",
+    ctaHref: "/buyer/insurance",
+    severity: "error",
+    accentColor: "#EF4444",
+  },
+}
+
+function getInsuranceDisplay(status: string | null | undefined): InsuranceDisplayConfig {
+  if (!status || !INSURANCE_CARD_DISPLAY[status]) {
+    return INSURANCE_CARD_DISPLAY.NOT_STARTED
+  }
+  return INSURANCE_CARD_DISPLAY[status]
+}
+
+function InsuranceStatusCard({ insuranceStatus }: { insuranceStatus: string | null | undefined }) {
+  const display = getInsuranceDisplay(insuranceStatus)
+  const borderClass =
+    display.severity === "success"
+      ? "border-green-200 dark:border-green-900/40"
+      : display.severity === "error"
+        ? "border-red-200 dark:border-red-900/40"
+        : display.severity === "warning"
+          ? "border-amber-200 dark:border-amber-900/40"
+          : "border-muted"
+
+  return (
+    <Card className={`shadow-sm ${borderClass}`} data-testid="insurance-status-card">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <Shield className="h-4 w-4" style={{ color: display.accentColor }} aria-hidden="true" />
+          Insurance Status
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p
+          className="text-sm font-semibold"
+          style={{ color: display.accentColor }}
+          data-testid="insurance-status-label"
+        >
+          {display.label}
+        </p>
+        <p className="text-xs text-muted-foreground mt-1.5 mb-3">
+          {display.severity === "success"
+            ? "Your insurance has been verified. You're all set for delivery."
+            : display.severity === "error"
+              ? "Insurance verification is required before your vehicle can be released."
+              : "Insurance does not affect your shopping, shortlisting, or auction activity."}
+        </p>
+        <Link href={display.ctaHref}>
+          <Button
+            size="sm"
+            variant={display.severity === "error" ? "default" : "outline"}
+            className="w-full h-8 text-xs gap-1.5"
+            data-testid="insurance-status-cta"
+          >
+            {display.ctaLabel}
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </Button>
+        </Link>
+      </CardContent>
+    </Card>
+  )
 }
 
 // ── Loading State ────────────────────────────────────────────────────────────
@@ -732,6 +853,12 @@ export default function BuyerDashboardPage() {
                 )}
               </CardContent>
             </Card>
+
+
+            {/* Insurance Status — shown when buyer has an active deal */}
+            {data?.insuranceStatus !== undefined && (stats.pendingDeals ?? 0) > 0 && (
+              <InsuranceStatusCard insuranceStatus={data?.insuranceStatus ?? null} />
+            )}
 
             {/* Savings */}
             <Card className="shadow-sm">

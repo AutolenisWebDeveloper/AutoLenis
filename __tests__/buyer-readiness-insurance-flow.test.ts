@@ -573,3 +573,108 @@ describe("Buyer Journey Order", () => {
     expect(statuses).not.toContain("INSURANCE_VERIFIED")
   })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// I. BUYER DASHBOARD INSURANCE STATUS CARD DISPLAY MAPPING
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("Dashboard Insurance Status Card Display Mapping", () => {
+  it("INSURANCE_STATUS_DISPLAY covers all InsuranceFlowStatus values", async () => {
+    const { InsuranceFlowStatus: IFS, INSURANCE_STATUS_DISPLAY } = await import("@/lib/types/insurance")
+    const allStatuses = Object.values(IFS)
+    for (const status of allStatuses) {
+      expect(INSURANCE_STATUS_DISPLAY[status]).toBeDefined()
+      expect(INSURANCE_STATUS_DISPLAY[status].label).toBeTruthy()
+      expect(INSURANCE_STATUS_DISPLAY[status].ctaLabel).toBeTruthy()
+    }
+  })
+
+  it("NOT_STARTED maps to 'Not Started' with upload CTA", async () => {
+    const { INSURANCE_STATUS_DISPLAY } = await import("@/lib/types/insurance")
+    const display = INSURANCE_STATUS_DISPLAY.NOT_STARTED
+    expect(display.label).toBe("Not Started")
+    expect(display.ctaLabel).toBe("Upload Current Insurance")
+    expect(display.ctaAction).toBe("upload")
+    expect(display.severity).toBe("info")
+  })
+
+  it("INSURANCE_PENDING maps to 'Proof Required Before Delivery' with upload CTA", async () => {
+    const { INSURANCE_STATUS_DISPLAY } = await import("@/lib/types/insurance")
+    const display = INSURANCE_STATUS_DISPLAY.INSURANCE_PENDING
+    expect(display.label).toBe("Proof Required Before Delivery")
+    expect(display.ctaLabel).toBe("Upload Insurance")
+    expect(display.ctaAction).toBe("upload")
+    expect(display.severity).toBe("warning")
+  })
+
+  it("CURRENT_INSURANCE_UPLOADED maps to 'Submitted for Review' with view CTA", async () => {
+    const { INSURANCE_STATUS_DISPLAY } = await import("@/lib/types/insurance")
+    const display = INSURANCE_STATUS_DISPLAY.CURRENT_INSURANCE_UPLOADED
+    expect(display.label).toBe("Submitted for Review")
+    expect(display.ctaLabel).toBe("View Upload")
+    expect(display.ctaAction).toBe("view")
+    expect(display.severity).toBe("info")
+  })
+
+  it("HELP_REQUESTED maps to 'Assistance Requested' with passive CTA", async () => {
+    const { INSURANCE_STATUS_DISPLAY } = await import("@/lib/types/insurance")
+    const display = INSURANCE_STATUS_DISPLAY.HELP_REQUESTED
+    expect(display.label).toBe("Assistance Requested")
+    expect(display.ctaLabel).toBe("We'll Contact You")
+    expect(display.ctaAction).toBe("none")
+    expect(display.severity).toBe("info")
+  })
+
+  it("VERIFIED maps to 'Verified' with view CTA and success severity", async () => {
+    const { INSURANCE_STATUS_DISPLAY } = await import("@/lib/types/insurance")
+    const display = INSURANCE_STATUS_DISPLAY.VERIFIED
+    expect(display.label).toBe("Verified")
+    expect(display.ctaLabel).toBe("View Details")
+    expect(display.ctaAction).toBe("view")
+    expect(display.severity).toBe("success")
+  })
+
+  it("REQUIRED_BEFORE_DELIVERY maps to 'Required Before Delivery' with error severity", async () => {
+    const { INSURANCE_STATUS_DISPLAY } = await import("@/lib/types/insurance")
+    const display = INSURANCE_STATUS_DISPLAY.REQUIRED_BEFORE_DELIVERY
+    expect(display.label).toBe("Required Before Delivery")
+    expect(display.ctaLabel).toBe("Upload Insurance")
+    expect(display.ctaAction).toBe("upload")
+    expect(display.severity).toBe("error")
+  })
+
+  it("UNDER_REVIEW maps to 'Under Review' with no-action CTA", async () => {
+    const { INSURANCE_STATUS_DISPLAY } = await import("@/lib/types/insurance")
+    const display = INSURANCE_STATUS_DISPLAY.UNDER_REVIEW
+    expect(display.label).toBe("Under Review")
+    expect(display.ctaLabel).toBe("Pending Review")
+    expect(display.ctaAction).toBe("none")
+    expect(display.severity).toBe("info")
+  })
+
+  it("no display label contains lender or financing language", async () => {
+    const { INSURANCE_STATUS_DISPLAY } = await import("@/lib/types/insurance")
+    for (const [, display] of Object.entries(INSURANCE_STATUS_DISPLAY)) {
+      const combined = `${display.label} ${display.ctaLabel}`.toLowerCase()
+      expect(combined).not.toContain("lender")
+      expect(combined).not.toContain("financing")
+      expect(combined).not.toContain("loan")
+      expect(combined).not.toContain("approved")
+    }
+  })
+
+  it("display severity levels are semantically correct", async () => {
+    const { INSURANCE_STATUS_DISPLAY } = await import("@/lib/types/insurance")
+    // Success: only VERIFIED
+    expect(INSURANCE_STATUS_DISPLAY.VERIFIED.severity).toBe("success")
+    // Error: only REQUIRED_BEFORE_DELIVERY
+    expect(INSURANCE_STATUS_DISPLAY.REQUIRED_BEFORE_DELIVERY.severity).toBe("error")
+    // Warning: only INSURANCE_PENDING
+    expect(INSURANCE_STATUS_DISPLAY.INSURANCE_PENDING.severity).toBe("warning")
+    // Info: all others
+    expect(INSURANCE_STATUS_DISPLAY.NOT_STARTED.severity).toBe("info")
+    expect(INSURANCE_STATUS_DISPLAY.CURRENT_INSURANCE_UPLOADED.severity).toBe("info")
+    expect(INSURANCE_STATUS_DISPLAY.HELP_REQUESTED.severity).toBe("info")
+    expect(INSURANCE_STATUS_DISPLAY.UNDER_REVIEW.severity).toBe("info")
+  })
+})
