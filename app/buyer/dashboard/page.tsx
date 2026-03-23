@@ -856,7 +856,7 @@ export default function BuyerDashboardPage() {
 
 
             {/* Insurance Status — shown when buyer has an active deal */}
-            {data?.insuranceStatus !== undefined && (stats.pendingDeals ?? 0) > 0 && (
+            {(stats.pendingDeals ?? 0) > 0 && (
               <InsuranceStatusCard insuranceStatus={data?.insuranceStatus ?? null} />
             )}
 

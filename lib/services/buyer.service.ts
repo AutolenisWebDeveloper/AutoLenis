@@ -182,7 +182,7 @@ export const buyerService = {
       const recentActivity = await getRecentActivity(userId, buyerId)
 
       // Derive insurance flow status from the most recent active deal
-      const activeDeal = deals.find((d: any) => d.status !== DealStatus.COMPLETED && d.status !== DealStatus.CANCELLED)
+      const activeDeal = deals.find((d: Record<string, unknown>) => d.status !== DealStatus.COMPLETED && d.status !== DealStatus.CANCELLED)
       const insuranceStatus = activeDeal
         ? mapLegacyInsuranceStatus(activeDeal.insurance_status as string | null)
         : null
