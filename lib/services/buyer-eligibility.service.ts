@@ -46,7 +46,11 @@ export class BuyerEligibilityService {
     const gates = computeEligibilityGates(prequalStatus)
 
     // Compute shopping range from prequal data
-    const shoppingRangeLow = prequal?.minMonthlyPaymentCents ?? null
+    // shoppingRangeLow: estimated minimum vehicle price (derived from monthly payment minimum × 60 months)
+    // shoppingRangeHigh: maximum OTD budget cap in cents
+    const shoppingRangeLow = prequal?.minMonthlyPaymentCents
+      ? prequal.minMonthlyPaymentCents * 60  // Approximate vehicle price from monthly min × 60 months
+      : null
     const shoppingRangeHigh = prequal?.maxOtdAmountCents ?? null
     const vehicleBudgetCap = prequal?.maxOtdAmountCents ?? null
 

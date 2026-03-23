@@ -17,13 +17,17 @@ import type { InsuranceAdminQueueRecord } from "@/lib/types/insurance"
 // ---------------------------------------------------------------------------
 
 export class AdminInsuranceOperationsService {
+  /** Default maximum records per queue query */
+  private static readonly DEFAULT_QUEUE_LIMIT = 100
+
   /**
    * Get the uploaded proof review queue — deals with insurance uploaded but not yet reviewed.
    */
-  async getUploadedProofReviewQueue(workspaceId?: string): Promise<InsuranceAdminQueueRecord[]> {
+  async getUploadedProofReviewQueue(workspaceId?: string, limit?: number): Promise<InsuranceAdminQueueRecord[]> {
     return this.queryByFlowStatus(
       [InsuranceFlowStatus.CURRENT_INSURANCE_UPLOADED, InsuranceFlowStatus.UNDER_REVIEW],
       workspaceId,
+      limit,
     )
   }
 
@@ -82,6 +86,7 @@ export class AdminInsuranceOperationsService {
   private async queryByFlowStatus(
     statuses: InsuranceFlowStatus[],
     workspaceId?: string,
+    limit?: number,
   ): Promise<InsuranceAdminQueueRecord[]> {
     const where: Record<string, unknown> = {
       insurance_flow_status: { in: statuses },
@@ -107,7 +112,7 @@ export class AdminInsuranceOperationsService {
         updatedAt: true,
       },
       orderBy: { updatedAt: "desc" },
-      take: 100,
+      take: limit ?? AdminInsuranceOperationsService.DEFAULT_QUEUE_LIMIT,
     })
 
     return deals.map((deal: Record<string, unknown>): InsuranceAdminQueueRecord => {

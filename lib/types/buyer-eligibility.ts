@@ -43,9 +43,9 @@ export interface BuyerEligibility {
   shoppingRangeLow: number | null
   /** High end of estimated shopping range in cents */
   shoppingRangeHigh: number | null
-  /** Timestamp when Shopping Pass was issued */
+  /** Timestamp when Shopping Pass was issued (ISO 8601 format, e.g. "2026-01-01T00:00:00.000Z") */
   shoppingPassIssuedAt: string | null
-  /** Timestamp when Shopping Pass expires */
+  /** Timestamp when Shopping Pass expires (ISO 8601 format, e.g. "2026-01-31T00:00:00.000Z") */
   shoppingPassExpiresAt: string | null
   /** Whether buyer's income has been verified */
   incomeVerified: boolean

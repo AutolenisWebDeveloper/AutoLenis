@@ -145,7 +145,15 @@ export class InsuranceStateMachineService {
         documentType: metadata?.documentType || null,
         notes: metadata?.notes || null,
       },
-    }).catch(() => { /* non-critical */ })
+    }).catch((err) => {
+      console.error("[insurance-state-machine] Failed to write event ledger entry:", {
+        dealId,
+        previousStatus: currentStatus,
+        newStatus,
+        actorId,
+        error: err instanceof Error ? err.message : String(err),
+      })
+    })
 
     return { success: true, previousStatus: currentStatus, newStatus }
   }

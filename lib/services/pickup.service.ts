@@ -383,9 +383,9 @@ export class PickupService {
     }
 
     // Insurance delivery gate: verify insurance before final release
-    const selectedDealId2 = appointment.selected_deal_id || appointment.dealId
-    if (selectedDealId2) {
-      const insuranceCheck = await insuranceStateMachine.isDeliveryReady(selectedDealId2)
+    const appointmentDealId = appointment.selected_deal_id || appointment.dealId
+    if (appointmentDealId) {
+      const insuranceCheck = await insuranceStateMachine.isDeliveryReady(appointmentDealId)
       if (!insuranceCheck.ready) {
         throw new Error(
           `Insurance verification required before completing pickup. ${insuranceCheck.reason || "Buyer must provide verified proof of insurance."}`,
