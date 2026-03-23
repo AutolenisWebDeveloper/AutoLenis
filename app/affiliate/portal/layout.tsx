@@ -63,6 +63,7 @@ export default async function AffiliatePortalLayout({ children }: { children: Re
       items: [
         { href: "/affiliate/portal/commissions", label: "Commissions & Earnings", icon: "DollarSign" },
         { href: "/affiliate/portal/payouts", label: "Payout Settings", icon: "CreditCard" },
+        { href: "/affiliate/portal/income-calculator", label: "Income Calculator", icon: "Calculator" },
       ],
     },
     {
