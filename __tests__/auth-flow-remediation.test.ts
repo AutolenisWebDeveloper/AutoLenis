@@ -352,7 +352,8 @@ describe("AuthService — consistent signup behavior", () => {
 
   it("checks for duplicate email before creating user", () => {
     const dupCheck = source.indexOf("already exists")
-    const insertUser = source.indexOf('.from("User").insert')
+    // The insert call is split across lines: .from("User")\n        .insert(...)
+    const insertUser = source.indexOf('.from("User")\n        .insert')
     expect(dupCheck).toBeGreaterThan(-1)
     expect(insertUser).toBeGreaterThan(-1)
     expect(dupCheck).toBeLessThan(insertUser)
