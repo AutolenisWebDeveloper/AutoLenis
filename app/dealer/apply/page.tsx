@@ -105,15 +105,10 @@ function DealerApplyContent() {
     }
   }
 
-  async function handleCompleteSetup() {
+  function handleCompleteSetup() {
     setSubmitting(true)
-    try {
-      setStep("complete")
-    } catch {
-      toast({ variant: "destructive", title: "Setup failed", description: "Please try again." })
-    } finally {
-      setSubmitting(false)
-    }
+    setStep("complete")
+    setSubmitting(false)
   }
 
   if (loading) {
