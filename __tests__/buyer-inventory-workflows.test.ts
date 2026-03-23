@@ -58,7 +58,7 @@ describe("Buyer Inventory Workflows", () => {
       )
       expect(res.status).toBe(400)
       const body = await res.json()
-      expect(body.error.code).toBe("MISSING_LISTING_ID")
+      expect(body.error.code).toBe("VALIDATION_ERROR")
     })
 
     it("creates a CLAIM lead with buyer context", async () => {
