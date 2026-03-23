@@ -20,6 +20,8 @@ export async function advanceDealStatusIfReady(dealId: string, userId?: string) 
   let newStatus: DealStatus | null = null
 
   // Check advancement conditions (Prisma statuses only)
+  // NOTE: Insurance does NOT block deal progression before contract stage.
+  // Insurance is only enforced at delivery/pickup release.
   switch (currentStatus) {
     case "FINANCING_PENDING":
       if (deal.payment_type && deal.payment_type !== "UNDECIDED") {
@@ -30,30 +32,24 @@ export async function advanceDealStatusIfReady(dealId: string, userId?: string) 
     case "FINANCING_APPROVED":
     case "FEE_PAID": {
       const feeStatus = deal.concierge_fee_status
-      const insuranceStatus = deal.insurance_status as DealInsuranceReadiness | null
 
       // Check if fee is handled
       const feeReady = feeStatus === "PAID" || feeStatus === "INCLUDED_IN_LOAN"
 
-      // Check if insurance is ready
-      const insuranceReady =
-        insuranceStatus === "SELECTED_AUTOLENIS" ||
-        insuranceStatus === "EXTERNAL_PROOF_UPLOADED" ||
-        insuranceStatus === "BOUND"
-
-      if (feeReady && insuranceReady) {
+      // Insurance no longer blocks deal progression to CONTRACT_PENDING.
+      // When fee is ready, advance directly to CONTRACT_PENDING.
+      // Insurance verification is enforced at delivery/pickup release gate.
+      if (feeReady) {
         newStatus = "CONTRACT_PENDING"
-      } else if (feeReady) {
-        newStatus = "INSURANCE_PENDING"
       }
       break
     }
 
     case "INSURANCE_PENDING": {
-      const insStatus = deal.insurance_status as DealInsuranceReadiness | null
-      if (insStatus === "SELECTED_AUTOLENIS" || insStatus === "EXTERNAL_PROOF_UPLOADED" || insStatus === "BOUND") {
-        newStatus = "CONTRACT_PENDING"
-      }
+      // Legacy support: if a deal is already in INSURANCE_PENDING,
+      // allow it to advance to CONTRACT_PENDING regardless of insurance status.
+      // Insurance is now enforced at delivery gate, not here.
+      newStatus = "CONTRACT_PENDING"
       break
     }
   }

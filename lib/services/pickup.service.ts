@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db"
 import crypto from "node:crypto"
 import { writeEventAsync } from "@/lib/services/event-ledger"
 import { PlatformEventType, EntityType, ActorType } from "@/lib/services/event-ledger"
+import { insuranceStateMachine } from "@/lib/services/insurance-state-machine"
 
 /** QR code validity window in minutes (FIX 8) */
 const QR_EXPIRY_MINUTES = 60
@@ -38,6 +39,14 @@ export class PickupService {
     const dealStatus = deal.status
     if (dealStatus !== "SIGNED") {
       throw new Error(`You must complete e-sign before scheduling pickup. Current status: ${dealStatus}`)
+    }
+
+    // Insurance delivery gate: verify insurance is satisfied before pickup
+    const insuranceCheck = await insuranceStateMachine.isDeliveryReady(selectedDealId)
+    if (!insuranceCheck.ready) {
+      throw new Error(
+        `Insurance verification required before scheduling pickup. ${insuranceCheck.reason || "Please upload proof of insurance or contact support."}`,
+      )
     }
 
     // Validate scheduled_at is in the future
@@ -371,6 +380,17 @@ export class PickupService {
     // Check status
     if (!["SCHEDULED", "ARRIVED"].includes(appointment.status as string)) {
       throw new Error(`Cannot complete - appointment status is ${appointment.status}`)
+    }
+
+    // Insurance delivery gate: verify insurance before final release
+    const selectedDealId2 = appointment.selected_deal_id || appointment.dealId
+    if (selectedDealId2) {
+      const insuranceCheck = await insuranceStateMachine.isDeliveryReady(selectedDealId2)
+      if (!insuranceCheck.ready) {
+        throw new Error(
+          `Insurance verification required before completing pickup. ${insuranceCheck.reason || "Buyer must provide verified proof of insurance."}`,
+        )
+      }
     }
 
     // Update appointment
