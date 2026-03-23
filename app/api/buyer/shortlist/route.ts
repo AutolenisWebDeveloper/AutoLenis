@@ -198,7 +198,7 @@ export async function POST(request: Request) {
     const parsed = shortlistAddSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: parsed.error.errors[0]?.message || "inventoryItemId is required" },
+        { success: false, error: parsed.error.errors[0]?.message || "Invalid request body" },
         { status: 400 },
       )
     }

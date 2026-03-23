@@ -737,7 +737,7 @@ describe("F. Go/No-Go Recommendation", () => {
     }
   })
 
-  it("readiness score improved from 72 to 85+", () => {
+  it("readiness score improved from 72 to 81", () => {
     // Score breakdown:
     // Structure & Routing: 95/100 (unchanged)
     // Auth & RBAC: 85/100 (improved: DEF-011 fixed, DEF-007 fixed)
