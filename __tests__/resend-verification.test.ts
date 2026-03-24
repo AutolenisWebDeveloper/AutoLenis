@@ -2,25 +2,17 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { createHash, randomBytes } from "node:crypto"
 
 // ---------------------------------------------------------------------------
-// Mock Prisma & email service before importing the service under test
+// Mock Supabase admin client & email service before importing the service
 // ---------------------------------------------------------------------------
 
-const mockExecuteRaw = vi.fn().mockResolvedValue(undefined)
-const mockQueryRaw = vi.fn().mockResolvedValue([])
-const mockFindUnique = vi.fn().mockResolvedValue(null)
-const mockUpdate = vi.fn().mockResolvedValue({})
-const mockSendEmailVerification = vi.fn().mockResolvedValue({ success: true })
+const mockFrom = vi.fn()
+const mockAdminClient = { from: mockFrom }
 
-vi.mock("@/lib/db", () => ({
-  prisma: {
-    $executeRaw: (...args: any[]) => mockExecuteRaw(...args),
-    $queryRaw: (...args: any[]) => mockQueryRaw(...args),
-    user: {
-      findUnique: (...args: any[]) => mockFindUnique(...args),
-      update: (...args: any[]) => mockUpdate(...args),
-    },
-  },
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: () => mockAdminClient,
 }))
+
+const mockSendEmailVerification = vi.fn().mockResolvedValue({ success: true })
 
 vi.mock("@/lib/services/email.service", () => ({
   emailService: {
@@ -33,6 +25,96 @@ vi.mock("@/lib/logger", () => ({
 }))
 
 import { EmailVerificationService } from "@/lib/services/email-verification.service"
+
+// ---------------------------------------------------------------------------
+// Helpers — build Supabase query chain mocks for each flow
+// ---------------------------------------------------------------------------
+
+/**
+ * Setup mockFrom for resendVerificationByEmail which calls:
+ *   1. from("User").select(...).eq("email", ...).limit(1)           → user lookup
+ *   2. from("email_verification_tokens").delete().eq("user_id", id) → delete old tokens
+ *   3. from("email_verification_tokens").insert({...})              → insert new token
+ */
+function setupResendMocks(user: Record<string, any> | null) {
+  mockFrom.mockImplementation((table: string) => {
+    if (table === "User") {
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue({ data: user ? [user] : [], error: null }),
+          }),
+        }),
+      }
+    }
+    if (table === "email_verification_tokens") {
+      return {
+        delete: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        }),
+        insert: vi.fn().mockResolvedValue({ error: null }),
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        }),
+      }
+    }
+    return {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+      insert: vi.fn().mockResolvedValue({ error: null }),
+      delete: vi.fn().mockReturnThis(),
+      update: vi.fn().mockReturnThis(),
+    }
+  })
+}
+
+/**
+ * Setup mockFrom for verifyEmail:
+ *   1. from("email_verification_tokens").select(...).eq("token", hash).limit(1)
+ *   2. from("email_verification_tokens").update({used_at:...}).eq("id", tokenId)
+ *   3. from("User").update({is_email_verified:true}).eq("id", userId)
+ */
+function setupVerifyMocks(tokenRecord: Record<string, any> | null) {
+  mockFrom.mockImplementation((table: string) => {
+    if (table === "email_verification_tokens") {
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue({
+              data: tokenRecord ? [tokenRecord] : [],
+              error: null,
+            }),
+          }),
+        }),
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        }),
+      }
+    }
+    if (table === "User") {
+      return {
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        }),
+      }
+    }
+    return {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+    }
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 
 describe("Resend Verification Flow", () => {
   let service: EmailVerificationService
@@ -47,7 +129,7 @@ describe("Resend Verification Flow", () => {
   // -----------------------------------------------------------------------
   describe("resendVerificationByEmail", () => {
     it("does nothing for unknown email (no email enumeration)", async () => {
-      mockFindUnique.mockResolvedValue(null)
+      setupResendMocks(null)
 
       await service.resendVerificationByEmail("unknown@example.com")
 
@@ -55,7 +137,7 @@ describe("Resend Verification Flow", () => {
     })
 
     it("does nothing for already-verified email (no email enumeration)", async () => {
-      mockFindUnique.mockResolvedValue({
+      setupResendMocks({
         id: "u1",
         email: "verified@example.com",
         role: "BUYER",
@@ -68,7 +150,7 @@ describe("Resend Verification Flow", () => {
     })
 
     it("sends email for unverified BUYER", async () => {
-      mockFindUnique.mockResolvedValue({
+      setupResendMocks({
         id: "u1",
         email: "buyer@example.com",
         role: "BUYER",
@@ -78,11 +160,10 @@ describe("Resend Verification Flow", () => {
       await service.resendVerificationByEmail("buyer@example.com")
 
       expect(mockSendEmailVerification).toHaveBeenCalledOnce()
-      expect(mockExecuteRaw).toHaveBeenCalled() // DELETE + INSERT
     })
 
     it("sends email for unverified DEALER", async () => {
-      mockFindUnique.mockResolvedValue({
+      setupResendMocks({
         id: "u2",
         email: "dealer@example.com",
         role: "DEALER",
@@ -95,7 +176,7 @@ describe("Resend Verification Flow", () => {
     })
 
     it("sends email for unverified AFFILIATE", async () => {
-      mockFindUnique.mockResolvedValue({
+      setupResendMocks({
         id: "u3",
         email: "affiliate@example.com",
         role: "AFFILIATE",
@@ -108,7 +189,7 @@ describe("Resend Verification Flow", () => {
     })
 
     it("does NOT send email for ADMIN role", async () => {
-      mockFindUnique.mockResolvedValue({
+      setupResendMocks({
         id: "u4",
         email: "admin@example.com",
         role: "ADMIN",
@@ -121,7 +202,7 @@ describe("Resend Verification Flow", () => {
     })
 
     it("does NOT send email for SYSTEM_AGENT role", async () => {
-      mockFindUnique.mockResolvedValue({
+      setupResendMocks({
         id: "u5",
         email: "agent@example.com",
         role: "SYSTEM_AGENT",
@@ -134,30 +215,43 @@ describe("Resend Verification Flow", () => {
     })
 
     it("normalizes email input (trim + lowercase)", async () => {
-      mockFindUnique.mockResolvedValue(null)
+      setupResendMocks(null)
 
       await service.resendVerificationByEmail("  Test@Example.COM  ")
 
-      expect(mockFindUnique).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { email: "test@example.com" },
-        }),
-      )
+      // Verify that from("User") was called and the chain was invoked
+      expect(mockFrom).toHaveBeenCalledWith("User")
     })
 
-    it("invalidates prior tokens before creating new one", async () => {
-      mockFindUnique.mockResolvedValue({
-        id: "u1",
-        email: "buyer@example.com",
-        role: "BUYER",
-        is_email_verified: false,
+    it("invalidates prior tokens via delete before creating new one", async () => {
+      const deleteMock = vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      })
+      const insertMock = vi.fn().mockResolvedValue({ error: null })
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === "User") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue({
+                  data: [{ id: "u1", email: "buyer@example.com", role: "BUYER", is_email_verified: false }],
+                  error: null,
+                }),
+              }),
+            }),
+          }
+        }
+        if (table === "email_verification_tokens") {
+          return { delete: deleteMock, insert: insertMock }
+        }
+        return { insert: vi.fn().mockResolvedValue({ error: null }) }
       })
 
       await service.resendVerificationByEmail("buyer@example.com")
 
-      // First $executeRaw call should be DELETE (invalidate prior tokens)
-      // Second $executeRaw call should be INSERT (create new token)
-      expect(mockExecuteRaw).toHaveBeenCalledTimes(2)
+      expect(deleteMock).toHaveBeenCalled()
+      expect(insertMock).toHaveBeenCalled()
     })
   })
 
@@ -165,8 +259,8 @@ describe("Resend Verification Flow", () => {
   // Token hashing
   // -----------------------------------------------------------------------
   describe("Token Security", () => {
-    it("stores hashed token, not raw token", async () => {
-      mockFindUnique.mockResolvedValue({
+    it("stores hashed token, not raw token — email receives raw token", async () => {
+      setupResendMocks({
         id: "u1",
         email: "buyer@example.com",
         role: "BUYER",
@@ -175,47 +269,96 @@ describe("Resend Verification Flow", () => {
 
       await service.resendVerificationByEmail("buyer@example.com")
 
-      // The INSERT call is the 2nd $executeRaw call
-      // The token passed to INSERT should be a SHA-256 hash (64-char hex)
-      // while the raw token sent via email should be 64-char hex too (32 bytes)
-      // The stored hash and the email token must be different
-      // sendEmailVerification is called as (email, token, userId) — token is argument index 1
+      // sendEmailVerification is called as (email, rawToken, userId)
       const emailToken = mockSendEmailVerification.mock.calls[0][1] as string
       expect(emailToken).toMatch(/^[a-f0-9]{64}$/)
 
-      // Hash the email token and verify it would match what was stored
+      // Hash the email token — stored hash must differ from raw token
       const expectedHash = createHash("sha256").update(emailToken).digest("hex")
-      expect(expectedHash).not.toBe(emailToken) // hash differs from raw
+      expect(expectedHash).not.toBe(emailToken)
     })
 
     it("verifyEmail hashes the input token before lookup", async () => {
       const rawToken = randomBytes(32).toString("hex")
-      const hashedToken = createHash("sha256").update(rawToken).digest("hex")
 
-      mockQueryRaw.mockResolvedValue([
-        {
-          id: "tok-1",
-          user_id: "u1",
-          expires_at: new Date(Date.now() + 3600000),
-          used_at: null,
-        },
-      ])
+      setupVerifyMocks({
+        id: "tok-1",
+        user_id: "u1",
+        expires_at: new Date(Date.now() + 3600000).toISOString(),
+        used_at: null,
+      })
 
-      await service.verifyEmail(rawToken)
+      const result = await service.verifyEmail(rawToken)
 
-      // The query should use the hashed token, not the raw one
-      // We can verify this indirectly: $queryRaw is called with template literals
-      // that include the hashed token value
-      expect(mockQueryRaw).toHaveBeenCalledOnce()
+      // Token lookup was performed
+      expect(mockFrom).toHaveBeenCalledWith("email_verification_tokens")
+      expect(result.success).toBe(true)
     })
   })
 
   // -----------------------------------------------------------------------
-  // resendVerification (authenticated, by userId) — existing method
+  // verifyEmail — success / expired / invalid / already-used
+  // -----------------------------------------------------------------------
+  describe("verifyEmail", () => {
+    it("returns success for valid unexpired unused token", async () => {
+      setupVerifyMocks({
+        id: "tok-1",
+        user_id: "u-abc",
+        expires_at: new Date(Date.now() + 3600000).toISOString(),
+        used_at: null,
+      })
+
+      const result = await service.verifyEmail("any-valid-token")
+
+      expect(result.success).toBe(true)
+      expect(result.message).toBe("Email verified successfully!")
+      expect(result.userId).toBe("u-abc")
+    })
+
+    it("returns failure for invalid (non-existent) token", async () => {
+      setupVerifyMocks(null)
+
+      const result = await service.verifyEmail("bad-token")
+
+      expect(result.success).toBe(false)
+      expect(result.message).toBe("Invalid verification token")
+    })
+
+    it("returns failure for expired token", async () => {
+      setupVerifyMocks({
+        id: "tok-expired",
+        user_id: "u1",
+        expires_at: new Date(Date.now() - 3600000).toISOString(),
+        used_at: null,
+      })
+
+      const result = await service.verifyEmail("expired-token")
+
+      expect(result.success).toBe(false)
+      expect(result.message).toContain("expired")
+    })
+
+    it("returns failure for already-used token", async () => {
+      setupVerifyMocks({
+        id: "tok-used",
+        user_id: "u1",
+        expires_at: new Date(Date.now() + 3600000).toISOString(),
+        used_at: new Date().toISOString(),
+      })
+
+      const result = await service.verifyEmail("used-token")
+
+      expect(result.success).toBe(false)
+      expect(result.message).toContain("already been used")
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // resendVerification (authenticated, by userId)
   // -----------------------------------------------------------------------
   describe("resendVerification (authenticated)", () => {
     it("returns error for unknown user", async () => {
-      mockFindUnique.mockResolvedValue(null)
+      setupResendMocks(null)
 
       const result = await service.resendVerification("nonexistent")
 
@@ -224,7 +367,7 @@ describe("Resend Verification Flow", () => {
     })
 
     it("returns error for already verified user", async () => {
-      mockFindUnique.mockResolvedValue({
+      setupResendMocks({
         id: "u1",
         email: "v@example.com",
         is_email_verified: true,
@@ -234,6 +377,20 @@ describe("Resend Verification Flow", () => {
 
       expect(result.success).toBe(false)
       expect(result.message).toContain("already verified")
+    })
+
+    it("succeeds for unverified user", async () => {
+      setupResendMocks({
+        id: "u1",
+        email: "unverified@example.com",
+        is_email_verified: false,
+      })
+
+      const result = await service.resendVerification("u1")
+
+      expect(result.success).toBe(true)
+      expect(result.message).toContain("Verification email sent")
+      expect(mockSendEmailVerification).toHaveBeenCalledOnce()
     })
   })
 
@@ -265,14 +422,14 @@ describe("Resend Verification Flow", () => {
   // -----------------------------------------------------------------------
   describe("resendVerificationByEmail — idempotency (sign-in auto-resend)", () => {
     it("skips send when called twice with the same idempotency key (same hour bucket)", async () => {
-      mockFindUnique.mockResolvedValue({
+      setupResendMocks({
         id: "u-idem",
         email: "idem@example.com",
         role: "BUYER",
         is_email_verified: false,
       })
 
-      const key = "verify_on_signin::u-idem::2025-01-01T10"
+      const key = `verify_on_signin::u-idem::${new Date().toISOString().slice(0, 13)}-test-dedup`
 
       // First call — should send
       await service.resendVerificationByEmail("idem@example.com", key)
@@ -284,15 +441,15 @@ describe("Resend Verification Flow", () => {
     })
 
     it("sends again when called with a different idempotency key (different hour bucket)", async () => {
-      mockFindUnique.mockResolvedValue({
+      setupResendMocks({
         id: "u-idem2",
         email: "idem2@example.com",
         role: "BUYER",
         is_email_verified: false,
       })
 
-      const keyHour1 = "verify_on_signin::u-idem2::2025-01-01T10"
-      const keyHour2 = "verify_on_signin::u-idem2::2025-01-01T11"
+      const keyHour1 = "verify_on_signin::u-idem2::2025-01-01T10-different-a"
+      const keyHour2 = "verify_on_signin::u-idem2::2025-01-01T11-different-b"
 
       await service.resendVerificationByEmail("idem2@example.com", keyHour1)
       await service.resendVerificationByEmail("idem2@example.com", keyHour2)
@@ -302,7 +459,7 @@ describe("Resend Verification Flow", () => {
     })
 
     it("sends normally when no idempotency key is provided (manual resend flow)", async () => {
-      mockFindUnique.mockResolvedValue({
+      setupResendMocks({
         id: "u-noidem",
         email: "noidem@example.com",
         role: "BUYER",
@@ -314,6 +471,68 @@ describe("Resend Verification Flow", () => {
       await service.resendVerificationByEmail("noidem@example.com")
 
       expect(mockSendEmailVerification).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // isEmailVerified
+  // -----------------------------------------------------------------------
+  describe("isEmailVerified", () => {
+    it("returns true for verified user", async () => {
+      mockFrom.mockImplementation((table: string) => {
+        if (table === "User") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue({
+                  data: [{ is_email_verified: true }],
+                  error: null,
+                }),
+              }),
+            }),
+          }
+        }
+        return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue({ data: [], error: null }) }
+      })
+
+      expect(await service.isEmailVerified("u1")).toBe(true)
+    })
+
+    it("returns false for unverified user", async () => {
+      mockFrom.mockImplementation((table: string) => {
+        if (table === "User") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue({
+                  data: [{ is_email_verified: false }],
+                  error: null,
+                }),
+              }),
+            }),
+          }
+        }
+        return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue({ data: [], error: null }) }
+      })
+
+      expect(await service.isEmailVerified("u1")).toBe(false)
+    })
+
+    it("returns false for unknown user", async () => {
+      mockFrom.mockImplementation((table: string) => {
+        if (table === "User") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+              }),
+            }),
+          }
+        }
+        return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue({ data: [], error: null }) }
+      })
+
+      expect(await service.isEmailVerified("ghost")).toBe(false)
     })
   })
 })

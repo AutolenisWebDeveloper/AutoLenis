@@ -83,25 +83,26 @@ export async function POST(request: Request) {
     })
   } catch (error: any) {
     if (error.code === "EMAIL_NOT_VERIFIED") {
-      console.error(`signin_failed reason=email_not_verified route=/api/auth/signin correlationId=${correlationId}`)
+      logger.info("Signin: email not verified", { correlationId })
       return NextResponse.json(
         {
           success: false,
           error: "EMAIL_NOT_VERIFIED",
-          message: "Please verify your email address before signing in. We just sent a new verification email.",
+          requiresEmailVerification: true,
+          message: "Please verify your email address before signing in.",
           verificationEmailSent: true,
         },
         { status: 403 },
       )
     }
     if (error.message?.includes("Invalid") || error.message?.includes("not found")) {
-      console.error(`signin_failed reason=invalid_credentials route=/api/auth/signin correlationId=${correlationId}`)
+      logger.warn("Signin: invalid credentials", { correlationId })
       return NextResponse.json(
         { success: false, error: "Invalid email or password" },
         { status: 401 },
       )
     }
-    console.error(`signin_failed reason=unhandled route=/api/auth/signin correlationId=${correlationId}`)
+    logger.error("Signin: unhandled error", { correlationId, error: error?.message })
     return NextResponse.json(
       { success: false, error: "Sign-in failed. Please try again.", correlationId },
       { status: 500 },

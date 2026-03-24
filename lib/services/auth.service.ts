@@ -6,6 +6,7 @@ import type { SignUpInput, SignInInput } from "@/lib/validators/auth"
 import { emailVerificationService } from "@/lib/services/email-verification.service"
 import { BuyerPackageTier, CURRENT_PACKAGE_VERSION } from "@/lib/constants/buyer-packages"
 import { initializeBuyerPackage } from "@/lib/services/buyer-package.service"
+import { logger } from "@/lib/logger"
 
 export class AuthService {
   static async signUp(input: SignUpInput) {
@@ -13,6 +14,8 @@ export class AuthService {
     const userId = crypto.randomUUID()
     const correlationId = crypto.randomUUID()
     const now = new Date().toISOString()
+
+    logger.info("Signup attempt", { role: input.role, correlationId })
 
     try {
       const { data: existingUsers, error: checkError } = await supabase
@@ -22,7 +25,7 @@ export class AuthService {
         .limit(1)
 
       if (checkError) {
-        console.error(`[AuthService.signUp] Database query failed correlationId=${correlationId}`, checkError)
+        logger.error("Signup: database query failed", { correlationId, error: checkError?.message })
         throw new Error(`Database connection error. Please try again. (ref: ${correlationId})`)
       }
 
@@ -50,7 +53,7 @@ export class AuthService {
         .select("id, email, role, first_name, last_name")
 
       if (createError) {
-        console.error(`[AuthService.signUp] Failed to create user correlationId=${correlationId}`, createError)
+        logger.error("Signup: failed to create user", { correlationId, error: createError?.message })
         throw new Error(`Failed to create user account. Please try again. (ref: ${correlationId})`)
       }
 
@@ -85,18 +88,20 @@ export class AuthService {
           updatedAt: now,
         })
         if (profileError) {
-          console.error(`[AuthService.signUp] Failed to create BuyerProfile correlationId=${correlationId}`, profileError)
+          logger.error("Signup: failed to create BuyerProfile", { correlationId, error: profileError?.message })
           throw new Error(`Failed to create buyer profile. Please try again. (ref: ${correlationId})`)
         }
 
         // Initialize package + billing via canonical Supabase RPC
         // This populates package columns on BuyerProfile, creates billing row,
         // and writes initial history/ledger entries.
+        // Non-fatal: if the RPC is not yet deployed the buyer can still use
+        // their account — package can be initialized later via admin/dashboard.
         try {
           await initializeBuyerPackage(buyerProfileId, tier, "REGISTRATION", CURRENT_PACKAGE_VERSION)
-        } catch (rpcError: any) {
-          console.error(`[AuthService.signUp] initializeBuyerPackage RPC failed correlationId=${correlationId}`, rpcError)
-          throw new Error(`Failed to initialize buyer package. Please try again. (ref: ${correlationId})`)
+        } catch (rpcError: unknown) {
+          logger.error("Signup: initializeBuyerPackage RPC failed (non-fatal)", { correlationId, error: (rpcError as Error)?.message })
+          // Do NOT rethrow — user + profile are already persisted.
         }
 
         // Audit event: package selected at registration (best-effort)
@@ -123,7 +128,7 @@ export class AuthService {
           updatedAt: now,
         })
         if (profileError) {
-          console.error(`[AuthService.signUp] Failed to create Dealer correlationId=${correlationId}`, profileError)
+          logger.error("Signup: failed to create Dealer profile", { correlationId, error: profileError?.message })
           throw new Error(`Failed to create dealer profile. Please try again. (ref: ${correlationId})`)
         }
       } else if (input.role === "AFFILIATE") {
@@ -139,7 +144,7 @@ export class AuthService {
           updatedAt: now,
         })
         if (profileError) {
-          console.error(`[AuthService.signUp] Failed to create Affiliate correlationId=${correlationId}`, profileError)
+          logger.error("Signup: failed to create Affiliate profile", { correlationId, error: profileError?.message })
           throw new Error(`Failed to create affiliate profile. Please try again. (ref: ${correlationId})`)
         }
       }
@@ -217,6 +222,8 @@ export class AuthService {
         role: user.role,
       })
 
+      logger.info("Signup: user and profile created successfully", { userId: user.id, role: user.role, correlationId })
+
       return {
         user: {
           id: user.id,
@@ -230,7 +237,7 @@ export class AuthService {
         referral,
       }
     } catch (error: any) {
-      console.error(`[AuthService.signUp] Signup failed correlationId=${correlationId}`)
+      logger.error("Signup failed", { correlationId, error: error?.message })
       throw error
     }
   }
@@ -276,12 +283,12 @@ export class AuthService {
       }
 
       if (queryError) {
-        console.error(`signin_failed reason=db_query_error correlationId=${correlationId} error=${queryError?.message}`)
+        logger.error("Signin: database query failed", { correlationId, error: queryError?.message })
         throw new Error("Unable to connect to database. Please try again.")
       }
 
       if (!users || users.length === 0) {
-        console.error(`signin_failed reason=user_not_found correlationId=${correlationId}`)
+        logger.warn("Signin: user not found", { correlationId })
         throw new Error("Invalid email or password")
       }
 
@@ -294,7 +301,7 @@ export class AuthService {
 
       const isValid = await verifyPasswordUtil(input.password, user.passwordHash)
       if (!isValid) {
-        console.error(`signin_failed reason=invalid_password correlationId=${correlationId}`)
+        logger.warn("Signin: invalid password", { correlationId })
         throw new Error("Invalid email or password")
       }
 
@@ -304,9 +311,9 @@ export class AuthService {
         const hourBucket = new Date().toISOString().slice(0, 13) // "YYYY-MM-DDTHH"
         const idempotencyKey = `verify_on_signin::${user.id}::${hourBucket}`
         emailVerificationService.resendVerificationByEmail(user.email, idempotencyKey).catch((err: unknown) => {
-          console.error(`signin_resend_failed correlationId=${correlationId}`, err)
+          logger.error("Signin: auto-resend verification failed", { correlationId, error: (err as Error)?.message })
         })
-        console.error(`signin_failed reason=email_not_verified correlationId=${correlationId}`)
+        logger.info("Signin: blocked — email not verified", { userId: user.id, correlationId })
         const emailNotVerifiedErr = Object.assign(new Error("Please verify your email address before signing in."), {
           code: "EMAIL_NOT_VERIFIED",
           verificationEmailSent: true,
@@ -379,6 +386,8 @@ export class AuthService {
         session_version: user.session_version ?? 0,
       })
 
+      logger.info("Signin: success", { userId: user.id, role: user.role, correlationId })
+
       return {
         user: {
           id: user.id,
@@ -394,7 +403,7 @@ export class AuthService {
         token,
       }
     } catch (error: any) {
-      console.error(`signin_failed reason=unhandled correlationId=${correlationId}`)
+      logger.error("Signin failed", { correlationId, error: error?.message })
       throw error
     }
   }

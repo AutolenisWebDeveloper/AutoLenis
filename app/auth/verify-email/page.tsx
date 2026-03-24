@@ -94,8 +94,9 @@ function VerifyEmailContent() {
       setCooldown(RESEND_COOLDOWN_SECONDS)
     } catch {
       toast({
-        title: "Email Sent",
-        description: "If that email exists, we sent a new verification link.",
+        title: "Request Failed",
+        description: "Unable to send verification email. Please check your connection and try again.",
+        variant: "destructive",
       })
     } finally {
       setResending(false)
