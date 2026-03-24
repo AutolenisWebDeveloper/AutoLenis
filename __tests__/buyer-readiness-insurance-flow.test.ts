@@ -15,7 +15,7 @@
  * K. Pickup/delivery insurance gate enforcement
  */
 
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, beforeAll } from "vitest"
 import {
   InsuranceFlowStatus,
   INSURANCE_VALID_TRANSITIONS,
@@ -685,41 +685,35 @@ describe("J. Schema safety", () => {
 // ── Section K: Pickup/delivery insurance gate ──────────────────────────────
 
 describe("K. Pickup/delivery insurance gate enforcement", () => {
-  it("pickup service imports insurance gate functions", async () => {
-    // Verify the pickup service file exists and imports the insurance gate
+  let pickupServiceContent: string
+
+  // Read pickup service file once for all tests in this section
+  beforeAll(async () => {
     const fs = await import("node:fs")
-    const content = fs.readFileSync(
-      "/home/runner/work/AutoLenis/AutoLenis/lib/services/pickup.service.ts",
-      "utf-8",
-    )
-    expect(content).toContain("mapLegacyInsuranceStatus")
-    expect(content).toContain("isInsuranceSatisfiedForDelivery")
-    expect(content).toContain("Insurance verification is required before scheduling pickup")
-    expect(content).toContain("Insurance verification is required before completing pickup")
+    const path = await import("node:path")
+    const filePath = path.resolve(__dirname, "..", "lib", "services", "pickup.service.ts")
+    pickupServiceContent = fs.readFileSync(filePath, "utf-8")
   })
 
-  it("pickup service checks insurance_status from deal before scheduling", async () => {
-    const fs = await import("node:fs")
-    const content = fs.readFileSync(
-      "/home/runner/work/AutoLenis/AutoLenis/lib/services/pickup.service.ts",
-      "utf-8",
-    )
+  it("pickup service imports insurance gate functions", () => {
+    expect(pickupServiceContent).toContain("mapLegacyInsuranceStatus")
+    expect(pickupServiceContent).toContain("isInsuranceSatisfiedForDelivery")
+    expect(pickupServiceContent).toContain("Insurance verification is required before scheduling pickup")
+    expect(pickupServiceContent).toContain("Insurance verification is required before completing pickup")
+  })
+
+  it("pickup service checks insurance_status from deal before scheduling", () => {
     // The insurance gate should appear AFTER the SIGNED check
-    const signedCheckIdx = content.indexOf("dealStatus !== \"SIGNED\"")
-    const insuranceGateIdx = content.indexOf("isInsuranceSatisfiedForDelivery(insuranceFlowStatus)")
+    const signedCheckIdx = pickupServiceContent.indexOf("dealStatus !== \"SIGNED\"")
+    const insuranceGateIdx = pickupServiceContent.indexOf("isInsuranceSatisfiedForDelivery(insuranceFlowStatus)")
     expect(signedCheckIdx).toBeGreaterThan(-1)
     expect(insuranceGateIdx).toBeGreaterThan(signedCheckIdx)
   })
 
-  it("pickup service checks insurance before completing pickup", async () => {
-    const fs = await import("node:fs")
-    const content = fs.readFileSync(
-      "/home/runner/work/AutoLenis/AutoLenis/lib/services/pickup.service.ts",
-      "utf-8",
-    )
+  it("pickup service checks insurance before completing pickup", () => {
     // Should have insurance check in completePickup
-    const completePickupIdx = content.indexOf("async completePickup")
-    const completionGateIdx = content.indexOf(
+    const completePickupIdx = pickupServiceContent.indexOf("async completePickup")
+    const completionGateIdx = pickupServiceContent.indexOf(
       "Insurance verification is required before completing pickup",
     )
     expect(completePickupIdx).toBeGreaterThan(-1)

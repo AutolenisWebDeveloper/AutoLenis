@@ -141,9 +141,12 @@ export function isInsuranceSatisfiedForDelivery(status: InsuranceFlowStatus): bo
 /**
  * Returns true if the insurance status does NOT block deal progression
  * through pre-delivery stages (shopping, shortlist, auction, contract, etc.).
- * Insurance never blocks these stages — only delivery/pickup.
+ *
+ * By design, insurance NEVER blocks these stages — only delivery/pickup.
+ * This function exists as an explicit, documented API for flow gating logic
+ * to call rather than relying on an implicit assumption.
  */
-export function isInsuranceNonBlocking(): boolean {
+export function isInsuranceNonBlocking(_status?: InsuranceFlowStatus): boolean {
   return true
 }
 

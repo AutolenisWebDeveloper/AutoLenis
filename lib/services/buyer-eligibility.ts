@@ -126,7 +126,8 @@ export function buildBuyerEligibility(
 
   // Gating rules per problem statement:
   // PREQUALIFIED: shortlist allowed, auction allowed
-  // PREQUALIFIED_CONDITIONAL: shortlist allowed, auction allowed if next step completed
+  // PREQUALIFIED_CONDITIONAL: shortlist allowed, auction allowed
+  //   (NOTE: future platform rules may add conditional checks before auction trigger)
   // MANUAL_REVIEW: shortlist optional, auction blocked
   // NOT_PREQUALIFIED: shortlist and auction blocked
   const allowedToShop = isPrequalified || isConditional
