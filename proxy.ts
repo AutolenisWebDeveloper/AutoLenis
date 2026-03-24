@@ -147,9 +147,19 @@ export async function proxy(request: NextRequest) {
     "/api/affiliate/",
   ]
 
-  const isSensitiveApi = SENSITIVE_API_PREFIXES.some((prefix) =>
-    pathname.startsWith(prefix)
-  )
+  // Auth endpoints within sensitive prefixes are public by design — they must be
+  // reachable without a session token so users can authenticate.
+  const SENSITIVE_API_AUTH_EXCEPTIONS = [
+    "/api/admin/auth/signin",
+    "/api/admin/auth/signup",
+    "/api/admin/auth/signout",
+  ]
+
+  const isSensitiveApi =
+    SENSITIVE_API_PREFIXES.some((prefix) => pathname.startsWith(prefix)) &&
+    !SENSITIVE_API_AUTH_EXCEPTIONS.some(
+      (exception) => pathname === exception || pathname.startsWith(exception + "/")
+    )
 
   if (isSensitiveApi) {
     // Gateway-level token presence check — defense in depth.
@@ -163,7 +173,7 @@ export async function proxy(request: NextRequest) {
 
     if (!sessionToken) {
       return NextResponse.json(
-        { error: "Authentication required" },
+        { error: "Authentication required", correlationId: crypto.randomUUID() },
         { status: 401 }
       )
     }

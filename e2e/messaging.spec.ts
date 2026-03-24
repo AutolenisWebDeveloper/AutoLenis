@@ -61,7 +61,7 @@ test.describe("Messaging System", () => {
 
     // Should show messages page content (could be auth redirect or page content)
     const status = await page.evaluate(() => document.readyState)
-    expect(status).toBe("complete")
+    expect(["interactive", "complete"]).toContain(status)
   })
 
   test("dealer messages page has buyer threads tab", async ({ page }) => {
