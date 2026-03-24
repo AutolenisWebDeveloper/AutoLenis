@@ -21,8 +21,8 @@ class Logger {
 
   private log(level: LogLevel, message: string, context?: LogContext) {
     // Logs are sent to console; integrate external logging service (e.g., Datadog) as needed
-    // Only log in development or for errors
-    if (!this.isDevelopment && level !== "error") {
+    // In production: emit info, warn, and error. In development: emit all levels including debug.
+    if (!this.isDevelopment && level === "debug") {
       return
     }
 

@@ -85,12 +85,15 @@ export async function POST(request: Request) {
     logger.debug("Signup input validated, calling AuthService")
 
     const result = await AuthService.signUp(validated)
-    logger.info("Sign up successful", { userId: result.user.id, email: result.user.email })
+    logger.info("Sign up successful", { userId: result.user.id, role: result.user.role })
 
     const { user, token } = result
 
     await setSessionCookie(token)
-    logger.debug("Session cookie set for signup")
+
+    // Track email send outcomes for truthful UX
+    let verificationEmailQueued = true
+    let welcomeEmailQueued = true
 
     // Fire email triggers asynchronously (best-effort, do not block response)
     onUserCreated({
@@ -101,16 +104,17 @@ export async function POST(request: Request) {
       referral: result.referral ? { code: result.referral.referralCode } : undefined,
       packageTier: user.packageTier ?? undefined,
     }).catch((err) => {
-      logger.error("onUserCreated trigger failed", err as Error)
+      welcomeEmailQueued = false
+      logger.error("Welcome email trigger failed (non-fatal)", err as Error)
     })
 
     // Send verification email (fire-and-forget — never block signup response)
     emailVerificationService.createVerificationToken(user.id, user.email).catch((err) => {
-      logger.error("Verification email send failed after signup", err as Error)
+      verificationEmailQueued = false
+      logger.error("Verification email send failed after signup (non-fatal)", err as Error)
     })
 
     const redirect = getRoleBasedRedirect(user.role, true)
-    logger.debug("Redirecting after signup", { redirect, role: user.role })
 
     return NextResponse.json({
       success: true,
