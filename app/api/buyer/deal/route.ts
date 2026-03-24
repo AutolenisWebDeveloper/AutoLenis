@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getSessionUser } from "@/lib/auth-server"
+import { requireAuth } from "@/lib/auth-server"
 import { createClient } from "@/lib/supabase/server"
 import { dealContextService } from "@/lib/services/deal-context.service"
 
@@ -7,11 +7,7 @@ export const dynamic = "force-dynamic"
 
 export async function GET() {
   try {
-    const user = await getSessionUser()
-
-    if (!user) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
-    }
+    const user = await requireAuth(["BUYER"])
 
     const supabase = await createClient()
 

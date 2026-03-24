@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getSessionUser } from "@/lib/auth-server"
+import { requireAuth } from "@/lib/auth-server"
 import { supabase } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
@@ -7,10 +7,7 @@ export const dynamic = "force-dynamic"
 // GET - Fetch buyer's trade-in info for current shortlist
 export async function GET(request: NextRequest) {
   try {
-    const user = await getSessionUser()
-    if (!user || user.role !== "BUYER") {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
-    }
+    const user = await requireAuth(["BUYER"])
 
     const { searchParams } = new URL(request.url)
     const shortlistId = searchParams.get("shortlistId")
@@ -55,12 +52,7 @@ export async function GET(request: NextRequest) {
 // POST - Create or update trade-in info
 export async function POST(request: NextRequest) {
   try {
-    const user = await getSessionUser()
-    if (!user || user.role !== "BUYER") {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
-    }
-
-    const body = await request.json()
+    const user = await requireAuth(["BUYER"]) = await request.json()
     const { shortlistId, hasTrade, vin, mileage, condition, photoUrls, hasLoan, estimatedPayoffCents, skipTradeIn } =
       body
 

@@ -33,7 +33,7 @@ export default function BuyerSearchPage() {
   const [shortlist, setShortlist] = useState<any>(null)
   const [preQual, setPreQual] = useState<any>(null)
   const [approvalType, setApprovalType] = useState<string | undefined>()
-  const [_filters, _setFilters] = useState({
+  const [filters, setFilters] = useState({
     makes: [] as string[],
     bodyStyles: [] as string[],
     maxPrice: "",
@@ -165,20 +165,45 @@ export default function BuyerSearchPage() {
     return price <= (preQual.maxOtd || 0)
   }
 
+  const applyFilters = (item: any) => {
+    const price = item.priceCents ? item.priceCents / 100 : item.price || 0
+    const mileage = item.mileage || item.miles || 0
+    const make = (item.make || "").toLowerCase()
+    const bodyStyle = (item.bodyStyle || item.body_style || "").toLowerCase()
+
+    // Make filter
+    if (filters.makes.length > 0 && !filters.makes.some((m) => make.includes(m.toLowerCase()))) {
+      return false
+    }
+    // Body style filter
+    if (filters.bodyStyles.length > 0 && !filters.bodyStyles.some((b) => bodyStyle.includes(b.toLowerCase()))) {
+      return false
+    }
+    // Max price filter
+    if (filters.maxPrice && price > Number(filters.maxPrice)) {
+      return false
+    }
+    // Max mileage filter
+    if (filters.maxMileage && mileage > Number(filters.maxMileage)) {
+      return false
+    }
+    return true
+  }
+
   const filteredVehicles = vehicles.filter((item) => {
     // If prequal exists and is active, filter by budget
     if (preQual && !preQual.isExpired && preQual.maxOtd) {
-      return item.price <= preQual.maxOtd
+      if (item.price > preQual.maxOtd) return false
     }
-    return true
+    return applyFilters(item)
   })
 
   const filteredMarketVehicles = marketVehicles.filter((item) => {
     if (preQual && !preQual.isExpired && preQual.maxOtd) {
       const price = item.priceCents ? item.priceCents / 100 : item.price || 0
-      return price <= preQual.maxOtd
+      if (price > preQual.maxOtd) return false
     }
-    return true
+    return applyFilters(item)
   })
 
   const formatCurrency = (amount: number) => {
@@ -312,6 +337,10 @@ export default function BuyerSearchPage() {
                   <select
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     aria-label="Filter by make"
+                    value={filters.makes[0] || ""}
+                    onChange={(e) =>
+                      setFilters((prev) => ({ ...prev, makes: e.target.value ? [e.target.value] : [] }))
+                    }
                   >
                     <option value="">All makes</option>
                     {availableFilters.makes.map((make: string) => (
@@ -327,6 +356,10 @@ export default function BuyerSearchPage() {
                   <select
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     aria-label="Filter by body style"
+                    value={filters.bodyStyles[0] || ""}
+                    onChange={(e) =>
+                      setFilters((prev) => ({ ...prev, bodyStyles: e.target.value ? [e.target.value] : [] }))
+                    }
                   >
                     <option value="">All styles</option>
                     {availableFilters.bodyStyles.map((style: string) => (
@@ -339,7 +372,13 @@ export default function BuyerSearchPage() {
 
                 <div className="space-y-2">
                   <Label>Max mileage</Label>
-                  <Input type="number" placeholder="100000" aria-label="Maximum mileage" />
+                  <Input
+                    type="number"
+                    placeholder="100000"
+                    aria-label="Maximum mileage"
+                    value={filters.maxMileage}
+                    onChange={(e) => setFilters((prev) => ({ ...prev, maxMileage: e.target.value }))}
+                  />
                 </div>
 
                 {preQual && !preQual.isExpired && (

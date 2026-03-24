@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { extractApiError } from "@/lib/utils/error-message"
+import { formatCurrencyDollars } from "@/lib/utils/format"
 import { DollarSign, CheckCircle2, Calculator, ArrowRight } from "lucide-react"
 
 export default function DealFinancingPage() {
@@ -189,7 +190,7 @@ export default function DealFinancingPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-bold tabular-nums text-[#0066FF]">${option.monthlyPayment}</p>
+                    <p className="text-2xl font-bold tabular-nums text-[#0066FF]">{formatCurrencyDollars(typeof option.monthlyPayment === 'number' ? option.monthlyPayment : Number(option.monthlyPayment) || 0)}</p>
                     <p className="text-xs text-muted-foreground">/month</p>
                   </div>
                 </div>

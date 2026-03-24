@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getSessionUser } from "@/lib/auth-server"
+import { requireAuth } from "@/lib/auth-server"
 import { createSourcingRequest } from "@/lib/services/inventory-sourcing/lead.service"
 
 export const dynamic = "force-dynamic"
@@ -12,10 +12,7 @@ export const dynamic = "force-dynamic"
  */
 export async function POST(req: NextRequest) {
   try {
-    const user = await getSessionUser()
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const user = await requireAuth(["BUYER"])
 
     const body = await req.json()
 

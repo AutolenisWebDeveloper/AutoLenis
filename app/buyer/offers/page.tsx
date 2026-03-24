@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { ProtectedRoute } from "@/components/layout/protected-route"
 import { PageHeader } from "@/components/dashboard/page-header"
 import { EmptyState } from "@/components/dashboard/empty-state"
@@ -19,6 +20,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export default function BuyerOffersPage() {
   const { data, error, isLoading, mutate } = useSWR("/api/buyer/auctions", fetcher)
+  const [searchTerm, setSearchTerm] = useState("")
 
   // Flatten offers from all auctions
   const allOffers = (data?.data?.auctions || []).flatMap((auction: any) =>
@@ -28,6 +30,18 @@ export default function BuyerOffersPage() {
       vehicle: auction.shortlist?.items?.[0]?.inventoryItem,
     }))
   )
+
+  // Apply search filter
+  const displayOffers = searchTerm
+    ? allOffers.filter((offer: any) => {
+        const term = searchTerm.toLowerCase()
+        const dealerName = (offer.dealer?.name || "").toLowerCase()
+        const vehicleInfo = offer.vehicle
+          ? `${offer.vehicle.year || ""} ${offer.vehicle.make || ""} ${offer.vehicle.model || ""}`.toLowerCase()
+          : ""
+        return dealerName.includes(term) || vehicleInfo.includes(term)
+      })
+    : allOffers
 
   const getDealerDisplay = (offer: any) => {
     // Identity masking: before release conditions are met, show anonymous
@@ -53,7 +67,12 @@ export default function BuyerOffersPage() {
         <div className="flex gap-4">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search offers..." className="pl-9" />
+            <Input
+              placeholder="Search offers..."
+              className="pl-9"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
         </div>
 
@@ -69,9 +88,14 @@ export default function BuyerOffersPage() {
             description="Complete your vehicle request to start receiving competitive offers from dealers."
             primaryCta={{ label: "Start a Request", href: "/buyer/search" }}
           />
+        ) : displayOffers.length === 0 ? (
+          <div className="text-center py-12">
+            <Search className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+            <p className="text-muted-foreground">No offers match your search</p>
+          </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {allOffers.map((offer: any) => {
+            {displayOffers.map((offer: any) => {
               const dealerInfo = getDealerDisplay(offer)
               return (
                 <Card key={offer.id} className="hover:shadow-md transition-shadow">

@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server"
 import { isTestWorkspace } from "@/lib/app-mode"
-import { getSessionUser } from "@/lib/auth-server"
+import { requireAuth } from "@/lib/auth-server"
 import { mockDb } from "@/lib/mocks/mockStore"
 
 export const dynamic = "force-dynamic"
 
 export async function GET() {
-  const user = await getSessionUser()
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  const user = await requireAuth(["BUYER"])
 
   if (isTestWorkspace(user)) {
     return NextResponse.json({ deposits: mockDb.deposits })
@@ -18,14 +15,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const user = await getSessionUser()
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
-  if (user.role !== "BUYER") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-  }
+  const user = await requireAuth(["BUYER"])
 
   const body = await request.json().catch(() => ({}))
   // Deposit initiation is handled via Stripe checkout session flow

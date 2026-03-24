@@ -3,6 +3,7 @@ import { getSessionUser } from "@/lib/auth-server"
 import { supabase } from "@/lib/db"
 import { requireDatabase } from "@/lib/require-database"
 import { InventoryStatus } from "@/lib/constants/statuses"
+import { shortlistAddSchema } from "@/lib/validators/buyer-mutations"
 
 export const dynamic = "force-dynamic"
 
@@ -194,12 +195,18 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    if (!body.inventoryItemId) {
-      return NextResponse.json({ success: false, error: "inventoryItemId is required" }, { status: 400 })
+    const parsed = shortlistAddSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: parsed.error.errors[0]?.message || "Invalid request body" },
+        { status: 400 },
+      )
     }
 
     const dbCheck = requireDatabase()
     if (dbCheck) return dbCheck
+
+    const { inventoryItemId } = parsed.data
 
     // Get buyer profile
     const { data: buyer } = await supabase.from("BuyerProfile").select("id").eq("userId", user.userId).maybeSingle()
@@ -239,7 +246,7 @@ export async function POST(request: Request) {
     const { data: inventoryItem } = await supabase
       .from("InventoryItem")
       .select("id, status")
-      .eq("id", body.inventoryItemId)
+      .eq("id", inventoryItemId)
       .maybeSingle()
 
     if (!inventoryItem) {
@@ -255,7 +262,7 @@ export async function POST(request: Request) {
       .from("ShortlistItem")
       .select("id")
       .eq("shortlistId", shortlist.id)
-      .eq("inventoryItemId", body.inventoryItemId)
+      .eq("inventoryItemId", inventoryItemId)
       .is("removed_at", null)
       .maybeSingle()
 
@@ -281,7 +288,7 @@ export async function POST(request: Request) {
     // Add item
     const { error: insertError } = await supabase.from("ShortlistItem").insert({
       shortlistId: shortlist.id,
-      inventoryItemId: body.inventoryItemId,
+      inventoryItemId: inventoryItemId,
       notes: body.notes || null,
       is_primary_choice: false,
       addedAt: new Date().toISOString(),

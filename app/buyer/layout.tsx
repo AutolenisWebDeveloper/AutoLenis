@@ -59,6 +59,7 @@ export default async function BuyerLayout({ children }: { children: React.ReactN
       items: [
         { href: "/buyer/requests", label: "Vehicle Requests", icon: "ClipboardList" },
         { href: "/buyer/auction", label: "Auctions & Offers", icon: "Gavel" },
+        { href: "/buyer/offers", label: "All Offers", icon: "Tag" },
       ],
     },
     {
@@ -85,6 +86,9 @@ export default async function BuyerLayout({ children }: { children: React.ReactN
       items: [
         { href: "/buyer/contracts", label: "Contracts", icon: "FolderOpen" },
         { href: "/buyer/documents", label: "Documents", icon: "FileStack" },
+        { href: "/buyer/payments", label: "Payments", icon: "CreditCard" },
+        { href: "/buyer/billing", label: "Billing", icon: "Wallet" },
+        { href: "/buyer/deposit", label: "Deposits", icon: "DollarSign" },
       ],
     },
     {
@@ -96,6 +100,8 @@ export default async function BuyerLayout({ children }: { children: React.ReactN
     {
       label: "Account",
       items: [
+        { href: "/buyer/profile", label: "Profile", icon: "User" },
+        { href: "/buyer/messages", label: "Messages", icon: "MessageSquare" },
         { href: "/buyer/settings", label: "Settings", icon: "Settings" },
       ],
     },
