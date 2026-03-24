@@ -1,5 +1,12 @@
 // Shared TypeScript types for AutoLenis platform
 
+// Re-export insurance state machine and buyer eligibility types
+export type { InsuranceFlowStatus } from "./insurance"
+export type { InsuranceUploadMetadata, InsuranceAdminQueueRecord, InsuranceStatusDisplay } from "./insurance"
+export { InsuranceFlowStatus as InsuranceFlowStatusEnum, InsuranceDocumentType, INSURANCE_STATUS_DISPLAY, isInsuranceSatisfiedForDelivery } from "./insurance"
+export type { BuyerEligibility } from "./buyer-eligibility"
+export { PrequalStatus, computeEligibilityGates } from "./buyer-eligibility"
+
 // Workspace / Tenant Types
 export type WorkspaceMode = "LIVE" | "TEST"
 
@@ -261,7 +268,7 @@ export interface ServiceFeePayment {
 
 // Insurance Types
 
-// Policy lifecycle status (matches Prisma InsuranceStatus enum)
+// Policy lifecycle status (matches Prisma InsuranceStatus enum — legacy)
 export type InsurancePolicyStatus =
   | "QUOTE_REQUESTED"
   | "QUOTE_RECEIVED"
@@ -269,7 +276,8 @@ export type InsurancePolicyStatus =
   | "POLICY_BOUND"
   | "EXTERNAL_UPLOADED"
 
-// Deal-level insurance readiness (stored in SelectedDeal.insurance_status)
+// Deal-level insurance readiness (legacy — stored in SelectedDeal.insurance_status)
+// New code should use InsuranceFlowStatus from lib/types/insurance.ts
 export type DealInsuranceReadiness =
   | "NOT_SELECTED"
   | "SELECTED_AUTOLENIS"

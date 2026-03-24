@@ -23,8 +23,8 @@ export const CANONICAL_STATUSES = [
 
 export const STATUS_LABELS: Record<string, string> = {
   REQUEST_SUBMITTED: "Request Submitted",
-  PREQUAL_STARTED: "Pre-Qualification Started",
-  PREQUAL_APPROVED: "Pre-Qualification Approved",
+  PREQUAL_STARTED: "Shopping Readiness Check Started",
+  PREQUAL_APPROVED: "Prequalified to Shop",
   DOCS_UPLOADED: "Documents Uploaded",
   SHORTLIST_CREATED: "Shortlist Created",
   AUCTION_STARTED: "Auction Started",

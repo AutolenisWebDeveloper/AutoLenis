@@ -107,7 +107,7 @@ export const buyerService = {
 
           supabase
             .from("SelectedDeal")
-            .select("id, buyerId, status, total_otd_amount_cents, createdAt, updatedAt")
+            .select("id, buyerId, status, total_otd_amount_cents, insurance_status, createdAt, updatedAt")
             .eq("buyerId", buyerId)
             .order("createdAt", { ascending: false }),
 
@@ -181,6 +181,12 @@ export const buyerService = {
       // Get recent activity
       const recentActivity = await getRecentActivity(userId, buyerId)
 
+      // Derive insurance flow status from the most recent active deal
+      const activeDeal = deals.find((d: Record<string, unknown>) => d.status !== DealStatus.COMPLETED && d.status !== DealStatus.CANCELLED)
+      const insuranceStatus = activeDeal
+        ? mapLegacyInsuranceStatus(activeDeal.insurance_status as string | null)
+        : null
+
       return {
         profile: flattenedProfile,
         preQual: preQual
@@ -215,6 +221,7 @@ export const buyerService = {
         recentActivity,
         referralStats,
         billing: packageBilling,
+        insuranceStatus,
       }
     } catch (error) {
       console.error("[BuyerService] Error fetching dashboard data:", error)
@@ -327,6 +334,43 @@ function getDefaultDashboardData() {
     pickups: [],
     recentActivity: [],
     referralStats: null,
+    insuranceStatus: null,
+  }
+}
+
+/**
+ * Map legacy insurance_status values from SelectedDeal to InsuranceFlowStatus.
+ * Mirrors the mapping logic in InsuranceStateMachineService.mapLegacyStatus.
+ */
+function mapLegacyInsuranceStatus(legacyStatus: string | null): string {
+  if (!legacyStatus) return "NOT_STARTED"
+  switch (legacyStatus) {
+    case "NOT_SELECTED":
+      return "NOT_STARTED"
+    case "SELECTED_AUTOLENIS":
+    case "EXTERNAL_PROOF_UPLOADED":
+      return "CURRENT_INSURANCE_UPLOADED"
+    case "BOUND":
+      return "VERIFIED"
+    case "PENDING":
+      return "INSURANCE_PENDING"
+    case "HELP_REQUESTED":
+      return "HELP_REQUESTED"
+    case "UNDER_REVIEW":
+      return "UNDER_REVIEW"
+    case "VERIFIED":
+      return "VERIFIED"
+    case "REQUIRED_BEFORE_DELIVERY":
+      return "REQUIRED_BEFORE_DELIVERY"
+    default:
+      // If the value is already a valid flow status, pass through
+      if ([
+        "NOT_STARTED", "CURRENT_INSURANCE_UPLOADED", "INSURANCE_PENDING",
+        "HELP_REQUESTED", "UNDER_REVIEW", "VERIFIED", "REQUIRED_BEFORE_DELIVERY",
+      ].includes(legacyStatus)) {
+        return legacyStatus
+      }
+      return "NOT_STARTED"
   }
 }
 

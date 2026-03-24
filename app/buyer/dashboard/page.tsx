@@ -27,6 +27,7 @@ import {
   Crown,
   Star,
   Loader2,
+  Shield,
 } from "lucide-react"
 import useSWR from "swr"
 import { useUser } from "@/hooks/use-user"
@@ -89,6 +90,7 @@ interface DashboardData {
     premium_fee_remaining_cents?: number
     premium_fee_status?: string
   } | null
+  insuranceStatus?: string | null
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -113,7 +115,7 @@ function getGreeting(): string {
   return "Good evening"
 }
 
-/** Format max buying power from preQual cents to dollars string */
+/** Format max shopping range from preQual cents to dollars string */
 function formatBuyingPower(preQual: PreQualData | null | undefined): string {
   if (!preQual || preQual.isExpired) return "—"
   const cents = preQual.maxOtdAmountCents ?? 0
@@ -140,7 +142,7 @@ function buildJourneySteps(data: DashboardData | undefined): JourneyStep[] {
     {
       key: "qualify",
       label: "Get Qualified",
-      description: "Pre-qualification or external preapproval",
+      description: "Shopping readiness check or external preapproval",
       completed: qualified,
       active: !qualified,
       href: "/buyer/prequal",
@@ -164,7 +166,7 @@ function buildJourneySteps(data: DashboardData | undefined): JourneyStep[] {
     {
       key: "deal",
       label: "Start Your Deal",
-      description: "Review financing, insurance, and sign",
+      description: "Review deal details, insurance, and sign",
       completed: (stats.completedDeals ?? 0) > 0,
       active: (stats.totalOffers ?? 0) > 0 && (stats.pendingDeals ?? 0) > 0,
       href: "/buyer/deal",
@@ -195,7 +197,7 @@ function getNextAction(data: DashboardData | undefined): NextActionResult {
   if (!qualified) {
     return {
       title: "Get Pre-Qualified",
-      description: "Complete a soft credit check or upload your bank pre-approval to unlock your buying journey.",
+      description: "Complete a quick shopping-readiness check or upload your preapproval to unlock your buying journey.",
       href: "/buyer/prequal",
       icon: CheckCircle2,
     }
@@ -219,7 +221,7 @@ function getNextAction(data: DashboardData | undefined): NextActionResult {
   if ((stats.pendingDeals ?? 0) > 0) {
     return {
       title: "Review Your Deal",
-      description: "You have an active deal in progress. Continue your financing and signing workflow.",
+      description: "You have an active deal in progress. Continue your deal coordination workflow.",
       href: "/buyer/deal",
       icon: FileText,
     }
@@ -233,6 +235,125 @@ function getNextAction(data: DashboardData | undefined): NextActionResult {
     }
   }
   return null
+}
+
+// ── Insurance Status Display ─────────────────────────────────────────────────
+
+type InsuranceDisplayConfig = {
+  label: string
+  ctaLabel: string
+  ctaHref: string
+  severity: "info" | "warning" | "success" | "error"
+  accentColor: string
+}
+
+const INSURANCE_CARD_DISPLAY: Record<string, InsuranceDisplayConfig> = {
+  NOT_STARTED: {
+    label: "Not Started",
+    ctaLabel: "Upload Current Insurance",
+    ctaHref: "/buyer/insurance",
+    severity: "info",
+    accentColor: "#64748b",
+  },
+  CURRENT_INSURANCE_UPLOADED: {
+    label: "Submitted for Review",
+    ctaLabel: "View Upload",
+    ctaHref: "/buyer/insurance",
+    severity: "info",
+    accentColor: "#0066FF",
+  },
+  INSURANCE_PENDING: {
+    label: "Proof Required Before Delivery",
+    ctaLabel: "Upload Insurance",
+    ctaHref: "/buyer/insurance",
+    severity: "warning",
+    accentColor: "#F59E0B",
+  },
+  HELP_REQUESTED: {
+    label: "Assistance Requested",
+    ctaLabel: "We'll Contact You",
+    ctaHref: "/buyer/insurance",
+    severity: "info",
+    accentColor: "#0066FF",
+  },
+  UNDER_REVIEW: {
+    label: "Under Review",
+    ctaLabel: "Pending Review",
+    ctaHref: "/buyer/insurance",
+    severity: "info",
+    accentColor: "#0066FF",
+  },
+  VERIFIED: {
+    label: "Verified",
+    ctaLabel: "View Details",
+    ctaHref: "/buyer/insurance",
+    severity: "success",
+    accentColor: "#7ED321",
+  },
+  REQUIRED_BEFORE_DELIVERY: {
+    label: "Required Before Delivery",
+    ctaLabel: "Upload Insurance",
+    ctaHref: "/buyer/insurance",
+    severity: "error",
+    accentColor: "#EF4444",
+  },
+}
+
+function getInsuranceDisplay(status: string | null | undefined): InsuranceDisplayConfig {
+  if (!status || !INSURANCE_CARD_DISPLAY[status]) {
+    return INSURANCE_CARD_DISPLAY.NOT_STARTED
+  }
+  return INSURANCE_CARD_DISPLAY[status]
+}
+
+function InsuranceStatusCard({ insuranceStatus }: { insuranceStatus: string | null | undefined }) {
+  const display = getInsuranceDisplay(insuranceStatus)
+  const borderClass =
+    display.severity === "success"
+      ? "border-green-200 dark:border-green-900/40"
+      : display.severity === "error"
+        ? "border-red-200 dark:border-red-900/40"
+        : display.severity === "warning"
+          ? "border-amber-200 dark:border-amber-900/40"
+          : "border-muted"
+
+  return (
+    <Card className={`shadow-sm ${borderClass}`} data-testid="insurance-status-card">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <Shield className="h-4 w-4" style={{ color: display.accentColor }} aria-hidden="true" />
+          Insurance Status
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p
+          className="text-sm font-semibold"
+          style={{ color: display.accentColor }}
+          data-testid="insurance-status-label"
+        >
+          {display.label}
+        </p>
+        <p className="text-xs text-muted-foreground mt-1.5 mb-3">
+          {display.severity === "success"
+            ? "Your insurance has been verified. You're all set for delivery."
+            : display.severity === "error"
+              ? "Insurance verification is required before your vehicle can be released."
+              : "Insurance does not affect your shopping, shortlisting, or auction activity."}
+        </p>
+        <Link href={display.ctaHref}>
+          <Button
+            size="sm"
+            variant={display.severity === "error" ? "default" : "outline"}
+            className="w-full h-8 text-xs gap-1.5"
+            data-testid="insurance-status-cta"
+          >
+            {display.ctaLabel}
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </Button>
+        </Link>
+      </CardContent>
+    </Card>
+  )
 }
 
 // ── Loading State ────────────────────────────────────────────────────────────
@@ -354,7 +475,7 @@ export default function BuyerDashboardPage() {
                     Qualification required to proceed
                   </p>
                   <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                    Complete a pre-qualification or upload a bank pre-approval to unlock the full buyer journey.
+                    Complete a pre-qualification or upload a preapproval to unlock the full buyer journey.
                   </p>
                 </div>
               </div>
@@ -449,7 +570,7 @@ export default function BuyerDashboardPage() {
               </div>
               {qualified && (
                 <Badge className="bg-[#7ED321]/20 text-[#7ED321] border border-[#7ED321]/30 text-xs font-medium w-fit">
-                  Qualified — Buying Enabled
+                  Prequalified — Shopping Enabled
                 </Badge>
               )}
             </div>
@@ -502,7 +623,7 @@ export default function BuyerDashboardPage() {
           {[
             {
               key: "buying-power",
-              label: "Buying Power",
+              label: "Shopping Power",
               value: formatBuyingPower(preQual),
               sub: preQual && !preQual.isExpired
                 ? `${preQual.daysUntilExpiry ?? "?"} days remaining`
@@ -612,8 +733,8 @@ export default function BuyerDashboardPage() {
                     accent: "#7ED321",
                     title: qualified ? "View Pre-Qualification" : "Get Pre-Qualified",
                     description: qualified
-                      ? `Buying power: ${formatBuyingPower(preQual)}`
-                      : "Soft check — no impact on your score",
+                      ? `Shopping power: ${formatBuyingPower(preQual)}`
+                      : "Quick check — no impact on your score",
                     badge: qualified ? "Active" : undefined,
                     badgeVariant: "default" as const,
                   },
@@ -699,7 +820,7 @@ export default function BuyerDashboardPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                   <DollarSign className="h-4 w-4 text-[#7ED321]" aria-hidden="true" />
-                  Buying Power
+                  Shopping Power
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -709,7 +830,7 @@ export default function BuyerDashboardPage() {
                       {formatBuyingPower(preQual)}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1.5">
-                      Max out-the-door budget
+                      Estimated shopping range
                     </p>
                     {preQual && preQual.daysUntilExpiry != null && preQual.daysUntilExpiry <= 7 && (
                       <p className="text-xs text-amber-600 mt-1.5 font-medium flex items-center gap-1.5">
@@ -721,7 +842,7 @@ export default function BuyerDashboardPage() {
                 ) : (
                   <div className="space-y-2.5">
                     <p className="text-sm text-muted-foreground">
-                      Complete qualification to see your buying power.
+                      Complete pre-qualification to see your estimated shopping range.
                     </p>
                     <Link href="/buyer/prequal">
                       <Button size="sm" variant="outline" className="w-full h-8 text-xs">
@@ -732,6 +853,12 @@ export default function BuyerDashboardPage() {
                 )}
               </CardContent>
             </Card>
+
+
+            {/* Insurance Status — shown when buyer has an active deal */}
+            {(stats.pendingDeals ?? 0) > 0 && (
+              <InsuranceStatusCard insuranceStatus={data?.insuranceStatus ?? null} />
+            )}
 
             {/* Savings */}
             <Card className="shadow-sm">
