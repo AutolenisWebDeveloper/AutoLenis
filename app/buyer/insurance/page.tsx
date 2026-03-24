@@ -203,7 +203,7 @@ export default function BuyerInsurancePage() {
           <Card className="border-blue-200 bg-blue-50/50">
             <CardContent className="pt-6">
               <p className="text-sm text-blue-800">
-                <strong>No active deal yet.</strong> Insurance actions become available after you select a deal.
+                <strong>No active deal yet.</strong> Insurance actions become available after you have an active deal.
                 You can still browse and complete this step later.
               </p>
             </CardContent>

@@ -182,8 +182,9 @@ export class AdminInsuranceOperationsService {
           reviewedBy = reviewEvent.actorId || null
           reviewedAt = reviewEvent.createdAt || null
         }
-      } catch {
+      } catch (err) {
         // Event ledger read is best-effort; fall back to status-derived values
+        console.error("[AdminInsuranceOps] Event ledger read failed for deal:", deal.id, err instanceof Error ? err.message : String(err))
       }
 
       // Also derive upload presence from status if event ledger doesn't have data

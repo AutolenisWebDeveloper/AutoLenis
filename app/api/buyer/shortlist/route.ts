@@ -13,17 +13,17 @@ const MAX_SHORTLIST_ITEMS = 10
  * Resolve PreQualification status to a PrequalStatus enum value.
  * Insurance status is NOT checked — only prequal determines eligibility.
  */
-function resolvePrequalStatus(prequal: { status?: string; expiresAt?: string } | null): string {
-  if (!prequal || !prequal.status) return PrequalStatus.NOT_STARTED
-  if (prequal.expiresAt && new Date(prequal.expiresAt) < new Date()) return PrequalStatus.EXPIRED
+function resolvePrequalStatus(prequal: { status?: string; expiresAt?: string } | null): PrequalStatus {
+  if (!prequal || !prequal.status) return PrequalStatus.NOT_STARTED as PrequalStatus
+  if (prequal.expiresAt && new Date(prequal.expiresAt) < new Date()) return PrequalStatus.EXPIRED as PrequalStatus
   // Map canonical PreQualification.status to PrequalStatus
   switch (prequal.status) {
-    case "ACTIVE": return PrequalStatus.PREQUALIFIED
-    case "CONDITIONAL": return PrequalStatus.PREQUALIFIED_CONDITIONAL
-    case "MANUAL_REVIEW": return PrequalStatus.MANUAL_REVIEW
-    case "DECLINED": return PrequalStatus.NOT_PREQUALIFIED
-    case "EXPIRED": return PrequalStatus.EXPIRED
-    default: return PrequalStatus.NOT_STARTED
+    case "ACTIVE": return PrequalStatus.PREQUALIFIED as PrequalStatus
+    case "CONDITIONAL": return PrequalStatus.PREQUALIFIED_CONDITIONAL as PrequalStatus
+    case "MANUAL_REVIEW": return PrequalStatus.MANUAL_REVIEW as PrequalStatus
+    case "DECLINED": return PrequalStatus.NOT_PREQUALIFIED as PrequalStatus
+    case "EXPIRED": return PrequalStatus.EXPIRED as PrequalStatus
+    default: return PrequalStatus.NOT_STARTED as PrequalStatus
   }
 }
 
@@ -238,7 +238,7 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     const pqStatus = resolvePrequalStatus(shortlistPrequal)
-    const eligibilityGates = computeEligibilityGates(pqStatus as any)
+    const eligibilityGates = computeEligibilityGates(pqStatus)
 
     if (!eligibilityGates.allowedToShortlist) {
       return NextResponse.json(
