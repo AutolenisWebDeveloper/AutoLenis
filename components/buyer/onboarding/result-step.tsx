@@ -72,24 +72,24 @@ export function ResultStep({ preQual }: ResultStepProps) {
               <CheckCircle2 className="h-8 w-8 text-green-600" />
             </div>
             <div>
-              <CardTitle className="text-2xl text-green-900 dark:text-green-100">You're pre-qualified!</CardTitle>
+              <CardTitle className="text-2xl text-green-900 dark:text-green-100">You're prequalified to shop!</CardTitle>
               <CardDescription className="text-green-700 dark:text-green-300 text-base">
-                Great news! You're approved to start shopping for your next vehicle.
+                Great news! Your buyer profile is verified and you're ready to start shopping for your next vehicle.
               </CardDescription>
             </div>
           </div>
         </CardHeader>
       </Card>
 
-      {/* Approval Details Card */}
+      {/* Shopping Pass Details Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Your Approval Details</CardTitle>
+          <CardTitle>Your Shopping Pass Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Main Amount */}
           <div className="text-center py-4 bg-muted/50 rounded-lg">
-            <div className="text-sm text-muted-foreground mb-2">Approved up to</div>
+            <div className="text-sm text-muted-foreground mb-2">Estimated shopping range up to</div>
             <div className="text-5xl font-bold text-primary mb-2">{formatCurrency(getMaxOtd())}</div>
             <div className="text-sm text-muted-foreground">Out-the-door price (includes taxes & fees)</div>
           </div>
@@ -143,7 +143,7 @@ export function ResultStep({ preQual }: ResultStepProps) {
               <div>
                 <div className="font-medium">Browse vehicles in your budget</div>
                 <div className="text-sm text-muted-foreground">
-                  We'll only show you vehicles within your approved amount
+                  We'll only show you vehicles within your estimated shopping range
                 </div>
               </div>
             </li>

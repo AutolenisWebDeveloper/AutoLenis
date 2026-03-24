@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db"
 import crypto from "node:crypto"
 import { writeEventAsync } from "@/lib/services/event-ledger"
 import { PlatformEventType, EntityType, ActorType } from "@/lib/services/event-ledger"
+import { mapLegacyInsuranceStatus, isInsuranceSatisfiedForDelivery } from "@/lib/services/insurance-state-machine"
 
 /** QR code validity window in minutes (FIX 8) */
 const QR_EXPIRY_MINUTES = 60
@@ -38,6 +39,14 @@ export class PickupService {
     const dealStatus = deal.status
     if (dealStatus !== "SIGNED") {
       throw new Error(`You must complete e-sign before scheduling pickup. Current status: ${dealStatus}`)
+    }
+
+    // Insurance gate: verify insurance is satisfied before allowing delivery scheduling
+    const insuranceFlowStatus = mapLegacyInsuranceStatus(deal.insurance_status)
+    if (!isInsuranceSatisfiedForDelivery(insuranceFlowStatus)) {
+      throw new Error(
+        "Insurance verification is required before scheduling pickup. Please upload proof of insurance or contact support for assistance.",
+      )
     }
 
     // Validate scheduled_at is in the future
@@ -371,6 +380,22 @@ export class PickupService {
     // Check status
     if (!["SCHEDULED", "ARRIVED"].includes(appointment.status as string)) {
       throw new Error(`Cannot complete - appointment status is ${appointment.status}`)
+    }
+
+    // Insurance gate: verify insurance is satisfied before allowing delivery completion
+    const selectedDealIdForCheck = appointment.selected_deal_id || appointment.dealId
+    if (selectedDealIdForCheck) {
+      const dealForInsurance = await prisma.selectedDeal.findUnique({
+        where: { id: selectedDealIdForCheck },
+      })
+      if (dealForInsurance) {
+        const insuranceFlowStatus = mapLegacyInsuranceStatus(dealForInsurance.insurance_status)
+        if (!isInsuranceSatisfiedForDelivery(insuranceFlowStatus)) {
+          throw new Error(
+            "Insurance verification is required before completing pickup. Buyer must upload proof of insurance.",
+          )
+        }
+      }
     }
 
     // Update appointment
