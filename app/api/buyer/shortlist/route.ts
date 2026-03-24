@@ -3,10 +3,29 @@ import { getSessionUser } from "@/lib/auth-server"
 import { supabase } from "@/lib/db"
 import { requireDatabase } from "@/lib/require-database"
 import { InventoryStatus } from "@/lib/constants/statuses"
+import { computeEligibilityGates, PrequalStatus } from "@/lib/types/buyer-eligibility"
 
 export const dynamic = "force-dynamic"
 
 const MAX_SHORTLIST_ITEMS = 10
+
+/**
+ * Resolve PreQualification status to a PrequalStatus enum value.
+ * Insurance status is NOT checked — only prequal determines eligibility.
+ */
+function resolvePrequalStatus(prequal: { status?: string; expiresAt?: string } | null): string {
+  if (!prequal || !prequal.status) return PrequalStatus.NOT_STARTED
+  if (prequal.expiresAt && new Date(prequal.expiresAt) < new Date()) return PrequalStatus.EXPIRED
+  // Map canonical PreQualification.status to PrequalStatus
+  switch (prequal.status) {
+    case "ACTIVE": return PrequalStatus.PREQUALIFIED
+    case "CONDITIONAL": return PrequalStatus.PREQUALIFIED_CONDITIONAL
+    case "MANUAL_REVIEW": return PrequalStatus.MANUAL_REVIEW
+    case "DECLINED": return PrequalStatus.NOT_PREQUALIFIED
+    case "EXPIRED": return PrequalStatus.EXPIRED
+    default: return PrequalStatus.NOT_STARTED
+  }
+}
 
 export async function GET() {
   try {
@@ -206,6 +225,33 @@ export async function POST(request: Request) {
 
     if (!buyer) {
       return NextResponse.json({ success: false, error: "Buyer profile not found" }, { status: 404 })
+    }
+
+    // Eligibility gate: check prequalification to determine shortlist access.
+    // Insurance status does NOT affect shortlist eligibility.
+    const { data: shortlistPrequal } = await supabase
+      .from("PreQualification")
+      .select("status, expiresAt")
+      .eq("buyerId", buyer.id)
+      .order("createdAt", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const pqStatus = resolvePrequalStatus(shortlistPrequal)
+    const eligibilityGates = computeEligibilityGates(pqStatus as any)
+
+    if (!eligibilityGates.allowedToShortlist) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: eligibilityGates.nextRequiredAction === "start_prequalification"
+            ? "Prequalification required before adding to shortlist"
+            : eligibilityGates.nextRequiredAction === "refresh_prequalification"
+              ? "Your prequalification has expired. Please refresh to continue."
+              : "You are not currently eligible to add items to your shortlist",
+        },
+        { status: 403 },
+      )
     }
 
     // Get or create shortlist

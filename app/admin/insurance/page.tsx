@@ -1,47 +1,164 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Heart, FileText, Shield } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Shield, Upload, Clock, HelpCircle, AlertTriangle, CheckCircle2 } from "lucide-react"
 import useSWR from "swr"
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
+type QueueRecord = {
+  dealId: string
+  buyerId: string
+  insuranceStatus: string
+  uploadPresent: boolean
+  deliveryBlockFlag: boolean
+  updatedAt: string
+}
+
+function QueueTable({
+  title,
+  icon: Icon,
+  records,
+  showVerifyAction,
+  onVerify,
+}: {
+  title: string
+  icon: React.ElementType
+  records: QueueRecord[]
+  showVerifyAction?: boolean
+  onVerify?: (dealId: string, decision: "VERIFIED" | "REQUIRED_BEFORE_DELIVERY") => void
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Icon className="h-5 w-5" />
+          {title}
+          <Badge variant="secondary" className="ml-auto">
+            {records.length}
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        {records.length === 0 ? (
+          <div className="p-6 text-center text-muted-foreground text-sm">No items in queue</div>
+        ) : (
+          <div className="w-full overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-muted/50 border-b">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Deal ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Buyer ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Upload</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Updated</th>
+                  {showVerifyAction && (
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Actions</th>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {records.map((record) => (
+                  <tr key={record.dealId} className="hover:bg-accent/50">
+                    <td className="px-4 py-3 text-sm font-mono">{record.dealId.slice(0, 12)}...</td>
+                    <td className="px-4 py-3 text-sm font-mono">{record.buyerId.slice(0, 12)}...</td>
+                    <td className="px-4 py-3">
+                      <Badge variant={record.insuranceStatus === "VERIFIED" ? "default" : "secondary"}>
+                        {record.insuranceStatus.replace(/_/g, " ")}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {record.uploadPresent ? (
+                        <span className="text-green-600">Yes</span>
+                      ) : (
+                        <span className="text-muted-foreground">No</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                      {record.updatedAt ? new Date(record.updatedAt).toLocaleDateString() : "-"}
+                    </td>
+                    {showVerifyAction && onVerify && (
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => onVerify(record.dealId, "VERIFIED")}
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                            Verify
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onVerify(record.dealId, "REQUIRED_BEFORE_DELIVERY")}
+                          >
+                            Require Before Delivery
+                          </Button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function AdminInsurancePage() {
-  const { data, isLoading } = useSWR("/api/admin/insurance", fetcher, {
+  const { data, isLoading, mutate } = useSWR("/api/admin/insurance/queues", fetcher, {
     refreshInterval: 30000,
   })
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount)
+  const queues = data?.data || {
+    uploadedProof: [],
+    pendingInsurance: [],
+    helpRequests: [],
+    deliveryBlocked: [],
   }
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    })
+  const handleVerify = async (dealId: string, decision: "VERIFIED" | "REQUIRED_BEFORE_DELIVERY") => {
+    try {
+      const res = await fetch("/api/admin/insurance/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dealId, decision }),
+      })
+      const result = await res.json()
+      if (result.success) {
+        // Refresh queues after action
+        mutate()
+      }
+    } catch (error) {
+      console.error("Failed to review insurance:", error)
+    }
   }
+
+  const totalItems = queues.uploadedProof.length + queues.pendingInsurance.length +
+    queues.helpRequests.length + queues.deliveryBlocked.length
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Insurance & Coverage</h1>
-        <p className="text-muted-foreground">Manage insurance quotes and policies</p>
+        <h1 className="text-3xl font-bold text-foreground">Insurance Queues</h1>
+        <p className="text-muted-foreground">Review and manage buyer insurance submissions</p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <FileText className="h-8 w-8 text-primary" />
+              <Upload className="h-6 w-6 text-blue-500" />
               <div>
-                <p className="text-2xl font-bold">{data?.quotesTotal || 0}</p>
-                <p className="text-sm text-muted-foreground">Total Quotes</p>
+                <p className="text-2xl font-bold">{queues.uploadedProof.length}</p>
+                <p className="text-xs text-muted-foreground">Awaiting Review</p>
               </div>
             </div>
           </CardContent>
@@ -49,10 +166,10 @@ export default function AdminInsurancePage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <Shield className="h-8 w-8 text-green-500" />
+              <Clock className="h-6 w-6 text-amber-500" />
               <div>
-                <p className="text-2xl font-bold">{data?.policiesTotal || 0}</p>
-                <p className="text-sm text-muted-foreground">Active Policies</p>
+                <p className="text-2xl font-bold">{queues.pendingInsurance.length}</p>
+                <p className="text-xs text-muted-foreground">Pending Insurance</p>
               </div>
             </div>
           </CardContent>
@@ -60,137 +177,66 @@ export default function AdminInsurancePage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <Heart className="h-8 w-8 text-red-500" />
+              <HelpCircle className="h-6 w-6 text-purple-500" />
               <div>
-                <p className="text-2xl font-bold">
-                  {data?.policies?.filter((p: any) => p.type === "AUTOLENIS").length || 0}
-                </p>
-                <p className="text-sm text-muted-foreground">AutoLenis Policies</p>
+                <p className="text-2xl font-bold">{queues.helpRequests.length}</p>
+                <p className="text-xs text-muted-foreground">Help Requests</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-6 w-6 text-red-500" />
+              <div>
+                <p className="text-2xl font-bold">{queues.deliveryBlocked.length}</p>
+                <p className="text-xs text-muted-foreground">Delivery Blocked</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Quotes */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Quotes</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="p-8 text-center">
-              <p className="text-muted-foreground">Loading quotes...</p>
+      {isLoading ? (
+        <div className="p-8 text-center text-muted-foreground">Loading insurance queues...</div>
+      ) : totalItems === 0 ? (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">All insurance queues are clear</p>
             </div>
-          ) : (
-            <div className="w-full overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-muted/50 border-b">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Buyer</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Carrier</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Vehicle</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Monthly Premium</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Expires</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {data?.quotes?.length > 0 ? (
-                    data.quotes.map((quote: any) => (
-                      <tr key={quote.id} className="hover:bg-accent">
-                        <td className="px-6 py-4 whitespace-nowrap font-medium">{quote.buyerName}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{quote.carrier}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{quote.vehicle}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                          {formatCurrency(quote.monthlyPremium)}/mo
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                          {quote.expiresAt ? formatDate(quote.expiresAt) : "-"}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
-                        No quotes found
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Policies */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Policies</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="p-8 text-center">
-              <p className="text-muted-foreground">Loading policies...</p>
-            </div>
-          ) : (
-            <div className="w-full overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-muted/50 border-b">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Buyer</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Carrier</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Policy #</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Coverage Period</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {data?.policies?.length > 0 ? (
-                    data.policies.map((policy: any) => (
-                      <tr key={policy.id} className="hover:bg-accent">
-                        <td className="px-6 py-4 whitespace-nowrap font-medium">{policy.buyerName}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              policy.type === "AUTOLENIS" ? "bg-purple-100 text-purple-800" : "bg-muted text-gray-800"
-                            }`}
-                          >
-                            {policy.type}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{policy.carrier}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono">{policy.policyNumber || "-"}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              policy.status === "ACTIVE" ? "bg-green-100 text-green-800" : "bg-muted text-gray-800"
-                            }`}
-                          >
-                            {policy.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                          {policy.effectiveDate && policy.expirationDate
-                            ? `${formatDate(policy.effectiveDate)} - ${formatDate(policy.expirationDate)}`
-                            : "-"}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
-                        No policies found
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          <QueueTable
+            title="Uploaded Proof Review"
+            icon={Upload}
+            records={queues.uploadedProof}
+            showVerifyAction
+            onVerify={handleVerify}
+          />
+          <QueueTable
+            title="Pending Insurance Follow-up"
+            icon={Clock}
+            records={queues.pendingInsurance}
+          />
+          <QueueTable
+            title="Help Requests"
+            icon={HelpCircle}
+            records={queues.helpRequests}
+          />
+          <QueueTable
+            title="Delivery Blocked"
+            icon={AlertTriangle}
+            records={queues.deliveryBlocked}
+            showVerifyAction
+            onVerify={handleVerify}
+          />
+        </div>
+      )}
     </div>
   )
 }

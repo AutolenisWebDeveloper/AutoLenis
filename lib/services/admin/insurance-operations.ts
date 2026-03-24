@@ -9,11 +9,15 @@
  *
  * Queries the existing `insurance_status` column on SelectedDeal.
  * Both new InsuranceFlowStatus values and legacy values are handled.
+ *
+ * Upload metadata (fileName, documentType, etc.) is read from the
+ * event ledger where it is persisted by the insurance state machine.
  */
 
 import { prisma } from "@/lib/db"
 import { InsuranceFlowStatus } from "@/lib/types/insurance"
 import type { InsuranceAdminQueueRecord } from "@/lib/types/insurance"
+import { getEntityTimeline, EntityType, PlatformEventType } from "@/lib/services/event-ledger"
 
 // ---------------------------------------------------------------------------
 // Legacy status values that map to each queue category
@@ -148,17 +152,56 @@ export class AdminInsuranceOperationsService {
       // Resolve to canonical InsuranceFlowStatus
       const insuranceStatus = this.resolveStatus(rawStatus)
 
+      // Read upload metadata and review info from event ledger.
+      // The insurance state machine persists this data as event payloads.
+      let documentType: string | null = null
+      let reviewedBy: string | null = null
+      let reviewedAt: string | null = null
+      let uploadPresent = false
+
+      try {
+        const timeline = getEntityTimeline(EntityType.INSURANCE, deal.id as string, 20)
+        const events = timeline.entries || []
+
+        // Find the latest upload event
+        const uploadEvent = events.find(
+          (e) => e.payload?.newStatus === InsuranceFlowStatus.CURRENT_INSURANCE_UPLOADED,
+        )
+        if (uploadEvent?.payload) {
+          uploadPresent = true
+          documentType = (uploadEvent.payload.documentType as string) || null
+        }
+
+        // Find the latest review/verify event
+        const reviewEvent = events.find(
+          (e) =>
+            e.payload?.newStatus === InsuranceFlowStatus.VERIFIED ||
+            e.payload?.newStatus === InsuranceFlowStatus.REQUIRED_BEFORE_DELIVERY,
+        )
+        if (reviewEvent) {
+          reviewedBy = reviewEvent.actorId || null
+          reviewedAt = reviewEvent.createdAt || null
+        }
+      } catch {
+        // Event ledger read is best-effort; fall back to status-derived values
+      }
+
+      // Also derive upload presence from status if event ledger doesn't have data
+      if (!uploadPresent) {
+        uploadPresent = insuranceStatus === InsuranceFlowStatus.CURRENT_INSURANCE_UPLOADED ||
+                       insuranceStatus === InsuranceFlowStatus.UNDER_REVIEW ||
+                       insuranceStatus === InsuranceFlowStatus.VERIFIED
+      }
+
       return {
         dealId: deal.id as string,
         buyerId: (deal.user_id || deal.buyerId) as string,
         insuranceStatus,
-        uploadPresent: insuranceStatus === InsuranceFlowStatus.CURRENT_INSURANCE_UPLOADED ||
-                       insuranceStatus === InsuranceFlowStatus.UNDER_REVIEW ||
-                       insuranceStatus === InsuranceFlowStatus.VERIFIED,
-        documentType: null, // TODO: Populate when insurance_upload_metadata column is added
-        uploadMetadata: null, // TODO: Populate when insurance_upload_metadata column is added
-        reviewedBy: null, // TODO: Populate when insurance_reviewed_by column is added
-        reviewedAt: null, // TODO: Populate when insurance_reviewed_at column is added
+        uploadPresent,
+        documentType,
+        uploadMetadata: null,
+        reviewedBy,
+        reviewedAt,
         deliveryBlockFlag: insuranceStatus === InsuranceFlowStatus.REQUIRED_BEFORE_DELIVERY,
         createdAt: String(deal.createdAt),
         updatedAt: String(deal.updatedAt),
