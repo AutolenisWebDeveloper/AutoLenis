@@ -21,7 +21,7 @@ I understand and acknowledge that:
 
 2. This is a consumer-initiated soft inquiry that will NOT affect my credit score.
 
-3. The pre-qualification results are conditional estimates and do NOT constitute a final credit decision or guarantee of approval. Final approval is subject to lender underwriting criteria.
+3. The pre-qualification results are conditional estimates and do NOT constitute a final credit decision or guarantee of financing. Final terms are subject to dealer and third-party underwriting criteria.
 
 4. My personal information will be handled in accordance with AutoLenis's Privacy Policy and applicable federal and state laws.
 
@@ -37,13 +37,13 @@ This consent is valid for 30 days from the date of authorization.`
  */
 export const FORWARDING_AUTHORIZATION_TEXT = `AUTHORIZATION FOR DATA FORWARDING
 
-By checking the box below, I authorize AutoLenis, Inc. to forward my consumer-supplied information to participating auto financing lenders and financial institutions for the purpose of obtaining financing offers.
+By checking the box below, I authorize AutoLenis, Inc. to forward my consumer-supplied information to participating auto financing partners and financial institutions for the purpose of obtaining financing offers.
 
 I understand that:
 
 1. Only information I have provided directly will be forwarded. No additional consumer report data will be shared without separate authorization.
 
-2. Each participating lender may have their own privacy policies and terms governing their use of my information.
+2. Each participating financing partner may have their own privacy policies and terms governing their use of my information.
 
 3. This authorization is separate from and in addition to my consent for the soft credit inquiry.
 
@@ -94,7 +94,7 @@ export function PrequalConsentForm({
     onForwardingAuthComplete?.({
       authorized: forwardingChecked,
       authorizationText: FORWARDING_AUTHORIZATION_TEXT,
-      recipientDescription: "Participating auto financing lenders and financial institutions",
+      recipientDescription: "Participating auto financing partners and financial institutions",
     })
     setStep("complete")
   }
@@ -164,7 +164,7 @@ export function PrequalConsentForm({
             <CardTitle>Data Forwarding Authorization</CardTitle>
           </div>
           <CardDescription>
-            This separate authorization is required before your information can be shared with lenders.
+            This separate authorization is required before your information can be shared with financing partners.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -182,7 +182,7 @@ export function PrequalConsentForm({
               htmlFor="forwarding"
               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
             >
-              I authorize AutoLenis to forward my information to participating lenders.
+              I authorize AutoLenis to forward my information to participating financing partners.
             </label>
           </div>
 
@@ -193,7 +193,7 @@ export function PrequalConsentForm({
                 onForwardingAuthComplete?.({
                   authorized: false,
                   authorizationText: FORWARDING_AUTHORIZATION_TEXT,
-                  recipientDescription: "Participating auto financing lenders and financial institutions",
+                  recipientDescription: "Participating auto financing partners and financial institutions",
                 })
                 setStep("complete")
               }}
@@ -290,7 +290,7 @@ export function PrequalResultsReview({ result, onStartOver }: PrequalResultsProp
         <CardTitle>Pre-Qualification Results</CardTitle>
         <CardDescription>
           {result.status === "ACTIVE"
-            ? "You are pre-qualified for vehicle financing."
+            ? "You are prequalified to shop for vehicles."
             : "Pre-qualification was not successful."}
         </CardDescription>
       </CardHeader>
@@ -304,7 +304,7 @@ export function PrequalResultsReview({ result, onStartOver }: PrequalResultsProp
 
             <div className="grid grid-cols-2 gap-4">
               <div className="rounded-lg border p-4">
-                <div className="text-sm text-muted-foreground">Max Approved Amount</div>
+                <div className="text-sm text-muted-foreground">Estimated Shopping Range</div>
                 <div className="text-xl font-bold">{formatCurrency(result.maxOtd)}</div>
               </div>
               <div className="rounded-lg border p-4">
@@ -324,11 +324,11 @@ export function PrequalResultsReview({ result, onStartOver }: PrequalResultsProp
             <div className="text-xs text-muted-foreground space-y-1">
               <p>
                 <strong>Important:</strong> This pre-qualification is a conditional estimate and does not
-                constitute a final credit decision. Final approval depends on lender underwriting.
+                constitute a final credit decision. Final terms depend on dealer and third-party underwriting.
               </p>
               <p>Provider: {result.provider} | Source: {result.sourceType}</p>
               {result.forwardingAuthorized && (
-                <p>✓ Data forwarding authorized to participating lenders</p>
+                <p>✓ Data forwarding authorized to participating financing partners</p>
               )}
             </div>
           </>

@@ -27,9 +27,15 @@ import {
   Crown,
   Star,
   Loader2,
+  Shield,
 } from "lucide-react"
 import useSWR from "swr"
 import { useUser } from "@/hooks/use-user"
+import {
+  InsuranceFlowStatus,
+  mapLegacyInsuranceStatus,
+} from "@/lib/services/insurance-state-machine"
+import { getInsuranceCardDisplay } from "@/lib/services/buyer-eligibility"
 
 // ── Type definitions ─────────────────────────────────────────────────────────
 
@@ -80,6 +86,7 @@ interface DashboardData {
   preQual?: PreQualData | null
   stats?: DashboardStats
   recentActivity?: ActivityItem[]
+  insuranceStatus?: string | null
   billing?: {
     deposit_status?: string
     deposit_amount_cents?: number
@@ -559,6 +566,52 @@ export default function BuyerDashboardPage() {
             )
           })}
         </div>
+
+        {/* ── Insurance Status Card ───────────────────────────────── */}
+        {(() => {
+          const rawInsuranceStatus = data?.insuranceStatus ?? null
+          const flowStatus = mapLegacyInsuranceStatus(rawInsuranceStatus)
+          const cardDisplay = getInsuranceCardDisplay(flowStatus)
+          const severityColors: Record<string, string> = {
+            success: "border-green-200 bg-green-50/50 dark:border-green-900/40 dark:bg-green-950/10",
+            warning: "border-amber-200 bg-amber-50/50 dark:border-amber-900/40 dark:bg-amber-950/10",
+            info: "border-blue-200 bg-blue-50/50 dark:border-blue-900/40 dark:bg-blue-950/10",
+            neutral: "border-border",
+          }
+          const severityIconColors: Record<string, string> = {
+            success: "text-green-600 dark:text-green-400",
+            warning: "text-amber-600 dark:text-amber-400",
+            info: "text-blue-600 dark:text-blue-400",
+            neutral: "text-muted-foreground",
+          }
+          // Only show insurance card when there's an active deal
+          const hasDeal = (stats.pendingDeals ?? 0) > 0 || (stats.completedDeals ?? 0) > 0
+          if (!hasDeal) return null
+          return (
+            <Card className={`shadow-sm ${severityColors[cardDisplay.severity]}`}>
+              <CardContent className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-background/60 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Shield className={`h-5 w-5 ${severityIconColors[cardDisplay.severity]}`} aria-hidden="true" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">Insurance Status: {cardDisplay.label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {flowStatus === "VERIFIED"
+                        ? "Your insurance has been verified. You're all set for delivery."
+                        : "Insurance proof is required before vehicle delivery."}
+                    </p>
+                  </div>
+                </div>
+                <Link href={cardDisplay.ctaHref}>
+                  <Button size="sm" variant={cardDisplay.severity === "success" ? "outline" : "default"} className="text-xs h-8 flex-shrink-0">
+                    {cardDisplay.cta}
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )
+        })()}
 
         {/* ── Next Action + Sidebar Cards ───────────────────────── */}
         <div className="grid lg:grid-cols-3 gap-6">

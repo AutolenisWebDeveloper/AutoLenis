@@ -27,7 +27,7 @@ export const RefinanceQualifiedEmail = ({
 
           <Text style={heading}>Great News, {firstName}!</Text>
           <Text style={paragraph}>
-            Your refinance application has been pre-approved, and you're ready to proceed with our lending partner to
+            Your refinance application has been pre-approved, and you're ready to proceed to
             complete your application.
           </Text>
 
@@ -40,7 +40,7 @@ export const RefinanceQualifiedEmail = ({
             <strong>Next Steps:</strong>
           </Text>
           <Text style={paragraph}>
-            Click the button below to complete your lender application. You'll need to provide additional documentation
+            Click the button below to continue your application. You'll need to provide additional documentation
             and sign the application form. This typically takes 10-15 minutes.
           </Text>
 
@@ -59,14 +59,14 @@ export const RefinanceQualifiedEmail = ({
             <strong>What to expect:</strong>
           </Text>
           <ul style={bulletList}>
-            <li style={bulletItem}>Complete the lender's application form (10-15 min)</li>
+            <li style={bulletItem}>Complete the application form (10-15 min)</li>
             <li style={bulletItem}>Upload required documents (pay stubs, ID, proof of insurance)</li>
-            <li style={bulletItem}>Review and sign loan documents</li>
-            <li style={bulletItem}>Receive final approval and loan terms</li>
+            <li style={bulletItem}>Review and sign documents</li>
+            <li style={bulletItem}>Receive final terms and next steps</li>
           </ul>
 
           <Text style={paragraph}>
-            Once you've completed the lender application, you'll receive a separate communication with your loan terms
+            Once you've completed the application, you'll receive a separate communication with your terms
             and next steps.
           </Text>
 

@@ -204,7 +204,7 @@ export default function BuyerPreQualPage() {
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold">Pre-Qualification</h1>
-            <p className="text-muted-foreground">Get approved to start shopping for vehicles</p>
+            <p className="text-muted-foreground">Get prequalified to start shopping for vehicles</p>
           </div>
 
           <Card className="border-primary/20">
@@ -507,7 +507,7 @@ export default function BuyerPreQualPage() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="h-4 w-4 mt-0.5 text-green-600 flex-shrink-0" />
-                  <span>Shop for vehicles up to your maximum approved amount</span>
+                  <span>Shop for vehicles up to your estimated shopping range</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="h-4 w-4 mt-0.5 text-green-600 flex-shrink-0" />
@@ -515,7 +515,7 @@ export default function BuyerPreQualPage() {
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="h-4 w-4 mt-0.5 text-green-600 flex-shrink-0" />
-                  <span>Final approval subject to full credit check and income verification</span>
+                  <span>Final terms subject to dealer review and income verification</span>
                 </li>
               </ul>
             </div>
