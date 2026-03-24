@@ -88,12 +88,11 @@ export default function DealerInventoryPage() {
   const suggestedVehicles = suggestedData?.success ? (suggestedData?.data?.vehicles || suggestedData?.vehicles || []) : []
 
   const filteredInventory = inventory.filter((item: any) => {
-    const vehicle = item.vehicle
     const searchLower = search.toLowerCase()
     return (
-      vehicle.make?.toLowerCase().includes(searchLower) ||
-      vehicle.model?.toLowerCase().includes(searchLower) ||
-      vehicle.vin?.toLowerCase().includes(searchLower) ||
+      item.make?.toLowerCase().includes(searchLower) ||
+      item.model?.toLowerCase().includes(searchLower) ||
+      item.vin?.toLowerCase().includes(searchLower) ||
       item.stockNumber?.toLowerCase().includes(searchLower)
     )
   })
