@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { csrfHeaders, getCsrfToken } from "@/lib/csrf-client"
+import { csrfHeaders } from "@/lib/csrf-client"
 import { useState, useEffect } from "react"
 import { ProtectedRoute } from "@/components/layout/protected-route"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -96,19 +96,31 @@ export default function BuyerInsurancePage() {
 
   const handleUploadProof = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+
+    if (!deal?.id) {
+      toast({
+        variant: "destructive",
+        title: "No active deal",
+        description: "Please select a deal first before uploading insurance proof.",
+      })
+      router.push("/buyer/deal")
+      return
+    }
+
     setUploading(true)
 
     try {
       const formData = new FormData(e.currentTarget)
-      if (deal?.id) formData.append("dealId", deal.id)
+      const policyNumber = formData.get("policyNumber") as string
 
-      const csrfToken = getCsrfToken()
-      const headers: HeadersInit = csrfToken ? { "x-csrf-token": csrfToken } : {}
-
-      const response = await fetch("/api/insurance/policy/upload", {
+      const response = await fetch(`/api/buyer/deals/${deal.id}/insurance/external-proof`, {
         method: "POST",
-        headers,
-        body: formData,
+        headers: csrfHeaders(),
+        body: JSON.stringify({
+          carrier_name: "External Provider",
+          policy_number: policyNumber,
+          document_url: "pending-upload",
+        }),
       })
 
       const data = await response.json()

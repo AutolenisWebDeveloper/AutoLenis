@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getSessionUser } from "@/lib/auth-server"
+import { requireAuth } from "@/lib/auth-server"
 import { buyerService } from "@/lib/services/buyer.service"
 import { isTestWorkspace } from "@/lib/app-mode"
 import { mockSelectors } from "@/lib/mocks/mockStore"
@@ -8,11 +8,7 @@ export const dynamic = "force-dynamic"
 
 export async function GET() {
   try {
-    const user = await getSessionUser()
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const user = await requireAuth(["BUYER"])
 
     if (isTestWorkspace(user)) {
       return NextResponse.json(mockSelectors.buyerDashboard())
