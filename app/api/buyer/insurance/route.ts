@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSessionUser } from "@/lib/auth-server"
-import { supabase } from "@/lib/db"
+import { createClient } from "@/lib/supabase/server"
 import { insuranceStateMachine } from "@/lib/services/insurance-state-machine"
-import { InsuranceFlowStatus, InsuranceDocumentType, INSURANCE_ALLOWED_MIME_TYPES } from "@/lib/types/insurance"
+import { InsuranceDocumentType, INSURANCE_ALLOWED_MIME_TYPES } from "@/lib/types/insurance"
 import type { InsuranceUploadMetadata } from "@/lib/types/insurance"
 
 export const dynamic = "force-dynamic"
@@ -16,6 +16,8 @@ export async function GET() {
     if (!user || user.role !== "BUYER") {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
+
+    const supabase = await createClient()
 
     // Find the buyer's active deal
     const { data: deal } = await supabase
@@ -74,7 +76,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Find buyer's active deal
-    const { data: deal } = await supabase
+    const supabaseClient = await createClient()
+    const { data: deal } = await supabaseClient
       .from("SelectedDeal")
       .select("id, insurance_status, status")
       .eq("buyerId", user.userId)

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Shield, Upload, Clock, HelpCircle, AlertTriangle, CheckCircle2 } from "lucide-react"
+import { csrfHeaders } from "@/lib/csrf-client"
 import useSWR from "swr"
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
@@ -127,7 +128,7 @@ export default function AdminInsurancePage() {
     try {
       const res = await fetch("/api/admin/insurance/review", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { ...csrfHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({ dealId, decision }),
       })
       const result = await res.json()

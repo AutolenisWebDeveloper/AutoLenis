@@ -16,7 +16,7 @@
 
 import { prisma } from "@/lib/db"
 import { InsuranceFlowStatus } from "@/lib/types/insurance"
-import type { InsuranceAdminQueueRecord } from "@/lib/types/insurance"
+import type { InsuranceAdminQueueRecord, InsuranceDocumentType } from "@/lib/types/insurance"
 import { getEntityTimeline, EntityType, PlatformEventType } from "@/lib/services/event-ledger"
 
 // ---------------------------------------------------------------------------
@@ -154,7 +154,7 @@ export class AdminInsuranceOperationsService {
 
       // Read upload metadata and review info from event ledger.
       // The insurance state machine persists this data as event payloads.
-      let documentType: string | null = null
+      let documentType: InsuranceDocumentType | null = null
       let reviewedBy: string | null = null
       let reviewedAt: string | null = null
       let uploadPresent = false
@@ -169,7 +169,7 @@ export class AdminInsuranceOperationsService {
         )
         if (uploadEvent?.payload) {
           uploadPresent = true
-          documentType = (uploadEvent.payload.documentType as string) || null
+          documentType = (uploadEvent.payload.documentType as InsuranceDocumentType) || null
         }
 
         // Find the latest review/verify event

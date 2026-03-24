@@ -813,3 +813,286 @@ describe("Merge-gate: Insurance enforcement scope", () => {
     expect(src).not.toContain("insuranceStateMachine")
   })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// L. GAP 1: BUYER INSURANCE PAGE — 3-PATH FLOW
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("Buyer Insurance Page — 3-Path Flow", () => {
+  it("presents three insurance paths: upload, pending, help", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/buyer/insurance/page.tsx", "utf8")
+
+    // Must have all three paths
+    expect(src).toContain("upload")
+    expect(src).toContain("pending")
+    expect(src).toContain("help")
+
+    // Must have radio group or similar path selection
+    expect(src).toContain("RadioGroup")
+    expect(src).toContain("path-upload")
+    expect(src).toContain("path-pending")
+    expect(src).toContain("path-help")
+  })
+
+  it("supports document type tagging", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/buyer/insurance/page.tsx", "utf8")
+
+    expect(src).toContain("INSURANCE_CARD")
+    expect(src).toContain("INSURANCE_DECLARATIONS")
+    expect(src).toContain("INSURANCE_BINDER")
+    expect(src).toContain("INSURANCE_OTHER")
+  })
+
+  it("accepts PDF, PNG, JPG, JPEG file uploads", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/buyer/insurance/page.tsx", "utf8")
+
+    expect(src).toContain(".pdf")
+    expect(src).toContain(".png")
+    expect(src).toContain(".jpg")
+    expect(src).toContain(".jpeg")
+  })
+
+  it("does NOT block the buyer journey (no gate logic)", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/buyer/insurance/page.tsx", "utf8")
+
+    // Insurance page should clearly state it doesn't block shopping
+    expect(src).toContain("does not affect your ability to shop")
+
+    // Must NOT reference shortlist or auction gating
+    expect(src).not.toContain("allowedToShortlist")
+    expect(src).not.toContain("allowedToTriggerAuction")
+  })
+
+  it("calls /api/buyer/insurance for status and actions", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/buyer/insurance/page.tsx", "utf8")
+
+    expect(src).toContain("/api/buyer/insurance")
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// M. GAP 2: INSURANCE API ROUTES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("Insurance API Routes", () => {
+  it("buyer insurance route exists with GET and POST", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/api/buyer/insurance/route.ts", "utf8")
+
+    expect(src).toContain("export async function GET")
+    expect(src).toContain("export async function POST")
+  })
+
+  it("buyer insurance POST validates action type", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/api/buyer/insurance/route.ts", "utf8")
+
+    expect(src).toContain('"upload"')
+    expect(src).toContain('"pending"')
+    expect(src).toContain('"help"')
+    expect(src).toContain("Invalid action")
+  })
+
+  it("buyer insurance POST validates upload fields", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/api/buyer/insurance/route.ts", "utf8")
+
+    expect(src).toContain("documentType")
+    expect(src).toContain("fileName")
+    expect(src).toContain("mimeType")
+    expect(src).toContain("INSURANCE_ALLOWED_MIME_TYPES")
+  })
+
+  it("buyer insurance POST calls insuranceStateMachine", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/api/buyer/insurance/route.ts", "utf8")
+
+    expect(src).toContain("insuranceStateMachine.uploadInsuranceProof")
+    expect(src).toContain("insuranceStateMachine.markInsurancePending")
+    expect(src).toContain("insuranceStateMachine.requestInsuranceHelp")
+  })
+
+  it("admin insurance queues route exists", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/api/admin/insurance/queues/route.ts", "utf8")
+
+    expect(src).toContain("export async function GET")
+    expect(src).toContain("adminInsuranceOperations.getAllQueues")
+    expect(src).toContain("isAdminRole")
+  })
+
+  it("admin insurance review route exists with POST", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/api/admin/insurance/review/route.ts", "utf8")
+
+    expect(src).toContain("export async function POST")
+    expect(src).toContain("adminVerifyInsurance")
+    expect(src).toContain("adminRequireBeforeDelivery")
+    expect(src).toContain("isAdminRole")
+  })
+
+  it("admin review validates decision values", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/api/admin/insurance/review/route.ts", "utf8")
+
+    expect(src).toContain("VERIFIED")
+    expect(src).toContain("REQUIRED_BEFORE_DELIVERY")
+    expect(src).toContain("decision must be")
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// N. GAP 4: INSURANCE METADATA PERSISTENCE VIA EVENT LEDGER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("Insurance Metadata Persistence", () => {
+  it("insurance state machine writes metadata to event ledger", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("lib/services/insurance-state-machine.ts", "utf8")
+
+    // Must emit events with payload containing upload metadata
+    expect(src).toContain("writeEventAsync")
+    expect(src).toContain("documentType: metadata?.documentType")
+    expect(src).toContain("notes: metadata?.notes")
+    expect(src).toContain("previousStatus: currentStatus")
+    expect(src).toContain("newStatus")
+  })
+
+  it("admin operations reads from event ledger for metadata", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("lib/services/admin/insurance-operations.ts", "utf8")
+
+    expect(src).toContain("getEntityTimeline")
+    expect(src).toContain("EntityType.INSURANCE")
+    expect(src).toContain("uploadEvent")
+    expect(src).toContain("reviewEvent")
+  })
+
+  it("admin operations enriches records with event-derived data", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("lib/services/admin/insurance-operations.ts", "utf8")
+
+    // Must set documentType from event payload
+    expect(src).toContain("documentType = (uploadEvent.payload.documentType")
+    // Must set reviewedBy and reviewedAt from review events
+    expect(src).toContain("reviewedBy = reviewEvent.actorId")
+    expect(src).toContain("reviewedAt = reviewEvent.createdAt")
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// O. GAP 5: SHORTLIST + AUCTION ELIGIBILITY GUARDS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("Shortlist + Auction Eligibility Guards", () => {
+  it("shortlist POST route uses computeEligibilityGates", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/api/buyer/shortlist/route.ts", "utf8")
+
+    expect(src).toContain("computeEligibilityGates")
+    expect(src).toContain("allowedToShortlist")
+    expect(src).toContain("Prequalification required before adding to shortlist")
+  })
+
+  it("auction POST route uses computeEligibilityGates", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/api/buyer/auction/route.ts", "utf8")
+
+    expect(src).toContain("computeEligibilityGates")
+    expect(src).toContain("allowedToTriggerAuction")
+    expect(src).toContain("Prequalification required before starting an auction")
+  })
+
+  it("shortlist route does NOT reference insurance for gating", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/api/buyer/shortlist/route.ts", "utf8")
+
+    // Must NOT check insurance status for shortlist access
+    expect(src).not.toContain("insuranceStateMachine")
+    expect(src).not.toContain("isDeliveryReady")
+    expect(src).not.toContain("InsuranceFlowStatus")
+  })
+
+  it("auction route does NOT reference insurance for gating", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/api/buyer/auction/route.ts", "utf8")
+
+    // Must NOT check insurance status for auction access
+    expect(src).not.toContain("insuranceStateMachine")
+    expect(src).not.toContain("isDeliveryReady")
+    expect(src).not.toContain("InsuranceFlowStatus")
+  })
+
+  it("eligibility guards check prequalification status", async () => {
+    const fs = await import("node:fs")
+    const shortlistSrc = fs.readFileSync("app/api/buyer/shortlist/route.ts", "utf8")
+    const auctionSrc = fs.readFileSync("app/api/buyer/auction/route.ts", "utf8")
+
+    // Both routes must query PreQualification
+    expect(shortlistSrc).toContain("PreQualification")
+    expect(auctionSrc).toContain("PreQualification")
+
+    // Both routes must resolve prequal status
+    expect(shortlistSrc).toContain("resolvePrequalStatus")
+    expect(auctionSrc).toContain("resolvePrequalStatus")
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// P. GAP 6: ADMIN INSURANCE QUEUE UI
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("Admin Insurance Queue UI", () => {
+  it("admin insurance page shows four queue tables", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/admin/insurance/page.tsx", "utf8")
+
+    expect(src).toContain("Uploaded Proof Review")
+    expect(src).toContain("Pending Insurance Follow-up")
+    expect(src).toContain("Help Requests")
+    expect(src).toContain("Delivery Blocked")
+  })
+
+  it("admin page fetches from /api/admin/insurance/queues", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/admin/insurance/page.tsx", "utf8")
+
+    expect(src).toContain("/api/admin/insurance/queues")
+  })
+
+  it("admin page has Mark Verified action", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/admin/insurance/page.tsx", "utf8")
+
+    expect(src).toContain("Verify")
+    expect(src).toContain("/api/admin/insurance/review")
+    expect(src).toContain("VERIFIED")
+    expect(src).toContain("REQUIRED_BEFORE_DELIVERY")
+  })
+
+  it("admin page shows deal ID, buyer ID, status, upload, and date per row", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/admin/insurance/page.tsx", "utf8")
+
+    expect(src).toContain("dealId")
+    expect(src).toContain("buyerId")
+    expect(src).toContain("insuranceStatus")
+    expect(src).toContain("uploadPresent")
+    expect(src).toContain("updatedAt")
+  })
+
+  it("admin page displays queue summary counts", async () => {
+    const fs = await import("node:fs")
+    const src = fs.readFileSync("app/admin/insurance/page.tsx", "utf8")
+
+    expect(src).toContain("Awaiting Review")
+    expect(src).toContain("Pending Insurance")
+    expect(src).toContain("Help Requests")
+    expect(src).toContain("Delivery Blocked")
+  })
+})
